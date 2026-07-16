@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LayoutDashboard, PenSquare, CalendarDays, Layers, History, BarChart3, Plug, LogOut, Radio } from "lucide-react";
+import { LayoutDashboard, PenSquare, CalendarDays, Layers, History, BarChart3, Plug, LogOut } from "lucide-react";
+import Logo from "./Logo";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, testid: "nav-dashboard" },
@@ -20,8 +21,8 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row">
       <aside className="md:w-60 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 flex md:flex-col bg-[#0A0A0B] shrink-0">
         <div className="hidden md:flex items-center gap-2 px-6 h-16 border-b border-white/10 cursor-pointer" onClick={() => navigate("/")}>
-          <Radio size={18} className="text-white" />
-          <span className="tracking-tight font-semibold" style={{ fontFamily: "Outfit" }}>CROSSPOST</span>
+          <Logo size={20} className="text-white" />
+          <span className="tracking-tight font-semibold" style={{ fontFamily: "Outfit" }}>ViralGrid</span>
         </div>
         <nav className="flex md:flex-col flex-1 overflow-x-auto md:overflow-visible p-2 md:p-3 gap-1">
           {NAV.map(({ to, label, icon: Icon, testid }) => (

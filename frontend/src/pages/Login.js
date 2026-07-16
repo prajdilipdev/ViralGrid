@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Zap, CalendarClock, BarChart3, Layers } from "lucide-react";
 import { PLATFORM_META } from "../lib/platforms";
+import Logo from "../components/Logo";
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 export default function Login() {
@@ -26,6 +27,10 @@ export default function Login() {
           style={{ backgroundImage: "url(https://images.unsplash.com/photo-1654198340681-a2e0fc449f1b?crop=entropy&cs=srgb&fm=jpg&q=85)" }}
         />
         <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-8">
+            <Logo size={28} className="text-white" />
+            <span className="text-xl tracking-tight font-semibold" style={{ fontFamily: "Outfit" }}>ViralGrid</span>
+          </div>
           <p className="text-xs tracking-[0.3em] uppercase text-white/50 mb-6 font-semibold">Private Publishing Suite</p>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-light leading-[1.05]" style={{ fontFamily: "Outfit" }}>
             One upload.<br />
