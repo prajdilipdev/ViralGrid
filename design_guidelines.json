@@ -1,0 +1,134 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 5: Luxury & Depth mixed with Grid Borders (The Technical Look). A premium, deeply immersive dark mode dashboard.",
+  "typography": {
+    "strategy": "The 'Old Money Tech' & 'Swiss Brutalist' fusion. Radical contrast.",
+    "heading_font": "Outfit",
+    "body_font": "IBM Plex Sans",
+    "hierarchy": {
+      "H1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-light",
+      "H2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-medium",
+      "H3": "text-xl sm:text-2xl font-medium",
+      "H4": "text-lg sm:text-xl font-medium",
+      "Body": "text-sm sm:text-base leading-relaxed",
+      "Labels_Overlines": "text-xs tracking-[0.2em] uppercase font-semibold text-white/50"
+    },
+    "forbidden_fonts": ["Inter (for headings)", "Roboto", "Open Sans", "Space Grotesk"]
+  },
+  "colors": {
+    "backgrounds": {
+      "app": "#050505",
+      "surface": "#0A0A0B",
+      "surface_glass": "rgba(15, 15, 17, 0.7)"
+    },
+    "borders": {
+      "default": "rgba(255, 255, 255, 0.08)",
+      "focus": "rgba(255, 255, 255, 0.25)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "rgba(255, 255, 255, 0.6)",
+      "tertiary": "rgba(255, 255, 255, 0.4)"
+    },
+    "accents": {
+      "primary": "#FFFFFF",
+      "success": "#22C55E",
+      "error": "#EF4444",
+      "warning": "#F59E0B"
+    },
+    "platform_colors": {
+      "youtube": "#FF0000",
+      "twitter": "#1DA1F2",
+      "instagram": "bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]",
+      "facebook": "#1877F2",
+      "tiktok": "#00F2FE",
+      "linkedin": "#0A66C2",
+      "pinterest": "#E60023"
+    },
+    "forbidden_colors": ["#1B93A4", "generic muddy gradients", "pure #000000"]
+  },
+  "visual_enhancers": {
+    "surfaces": "Use Crystal Glassmorphism for sticky headers and modals (backdrop-blur-2xl, bg-white/5, 1px border-white/10). Use Solid Backgrounds for dashboard cards.",
+    "borders": "Expose the skeleton. Grid items should use border-r and border-b with border-white/5 to create a structured 'Technical' look.",
+    "shadows": "Diffuse ambient shadows only. shadow-[0_8px_32px_rgba(0,0,0,0.4)] for elevated elements.",
+    "textures": "Subtle noise overlays in empty spaces or the login background to kill the digital flatness."
+  },
+  "components": {
+    "cards": "Flat solid surfaces. Sharp or slightly rounded edges (max rounded-md). 1px subtle border, no heavy box shadows by default.",
+    "buttons": "Tactical minimalism. Pure white background with black text for primary actions. Hover states should translate-y slightly and add a subtle glow.",
+    "forms": "Use Shadcn Form/Input components. High contrast focus rings. Inputs must have solid dark backgrounds, never fully transparent.",
+    "navigation": "Sticky sidebar or top header with crystal glassmorphism. Must have solid structure so text never collides with scrolling media.",
+    "toasts": "Sonner is mandatory. Position bottom-right. Dark theme matching.",
+    "calendar": "Shadcn custom calendar for scheduling. Strict grid alignment.",
+    "data_visualization": "Recharts for analytics. Monochrome or platform-specific colored lines, minimalist axes, no heavy grid lines."
+  },
+  "grids_layouts": {
+    "spacing": "Generous Spacing: p-6 or p-8 inside structural containers. Container gaps of gap-6 or gap-8.",
+    "dashboard_grid": "High Density Grid (MODE B). Base: grid-cols-1 md:grid-cols-3 lg:grid-cols-4. Summary widgets col-span-1. Charts col-span-2 or 3.",
+    "alignment": "Optical alignment over geometrical. Center only if tension requires it. Left-align dense data, labels, and paragraph blocks.",
+    "mobile_first": "Images max-h-[80vh] on mobile. Stack grids to grid-cols-1 on small viewports."
+  },
+  "motion": {
+    "lists": "Staggered entrance animations using framer-motion.",
+    "interactions": "Hover states must have transitions (e.g., transition: background-color 0.2s ease, transform 0.2s ease). Do NOT use 'transition: all'.",
+    "modals": "Scale up slightly (0.95 to 1) and fade in. Glassmorphism blur animates in.",
+    "micro": "Subtle scale-down (0.98) on button press."
+  },
+  "accessibility": {
+    "contrast": "Ensure text contrast on interactive states. Hover state color must be a lighter hue. Focus rings must be high contrast.",
+    "test_ids": "All interactive elements MUST include data-testid based on role (e.g., data-testid='post-submit-button').",
+    "motion_preference": "Respect prefers-reduced-motion for all framer-motion animations."
+  },
+  "media": {
+    "treatment": "Images must have subtle overlays if text sits on top (bg-black/50 max). Use pure, high-quality images.",
+    "icons": "Use 'lucide-react' for general UI. Platform logos should use 'react-icons' (e.g., FaYoutube, FaTwitter)."
+  },
+  "3d_libraries": {
+    "strategy": "Not strictly necessary for the core dashboard, but can use 'TSParticles' with a very subtle dark mesh/stars config for the Google Login background to add depth."
+  },
+  "image_urls": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1654198340681-a2e0fc449f1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBhYnN0cmFjdCUyMGRhcmslMjBncmFkaWVudHxlbnwwfHx8fDE3ODI0NjUxNzV8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract sleek dark gradient for the authentication page background.",
+      "category": "backgrounds"
+    },
+    "user_avatar": {
+      "url": "https://images.pexels.com/photos/32717323/pexels-photo-32717323.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Monochrome portrait of user.",
+      "category": "avatars"
+    },
+    "thumbnail_sample_1": {
+      "url": "https://images.pexels.com/photos/5277391/pexels-photo-5277391.jpeg",
+      "description": "Sunset urban skyline, used as a mock thumbnail in the recent posts / history table.",
+      "category": "thumbnails"
+    },
+    "thumbnail_sample_2": {
+      "url": "https://images.pexels.com/photos/22711217/pexels-photo-22711217.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Minimalist modern workspace, used as a mock thumbnail in the composer queue.",
+      "category": "thumbnails"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build a unified dashboard handling multi-platform social media publishing.",
+    "Implement pure HTML/Tailwind for layouts and Shadcn components for complex interactions (Forms, Modals, Calendars).",
+    "Focus heavily on the 'Content Composer' allowing media uploads and per-platform metadata toggles.",
+    "Ensure 'Content Calendar' utilizes robust grid logic.",
+    "Provide empty states with high-contrast, beautiful typography when no posts are scheduled.",
+    "Never use via.placeholder.com. Use the provided image URLs.",
+    "Maintain the strict 'Grid Borders' tech look for the dashboard layout (visible 1px borders between widgets)."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not converge toward generic 'AI slop'. Prioritize optical alignment and generous padding.",
+    "Never use dark colors as gradients. Use solid dark backgrounds.",
+    "Avoid generic centered layouts. Use asymmetrical or heavily structured grid layouts.",
+    "Create depth through layered z-index hierarchy and glassmorphism (12-24px blur with 1px borders).",
+    "NEVER use 'transition: all'. Explicitly define transitions (e.g., transform, opacity).",
+    "DO NOT center align the app container. Text and forms should align naturally (left).",
+    "Use modern pill-shaped or sharp-edged buttons with micro-interactions.",
+    "Never use AI emoji characters (🤖🧠💭) for icons. Use lucide-react.",
+    "Include 'data-testid' on ALL buttons, links, inputs, and interactive components.",
+    "Use 'sonner' for all toast notifications.",
+    "Shadcn Tablists must override h-9 with h-auto to prevent text cutoff on multi-line.",
+    "Never use complete transparent backgrounds for elements overlapping content (e.g., sticky navs, dropdowns). Always use solid or glass surfaces."
+  ]
+}

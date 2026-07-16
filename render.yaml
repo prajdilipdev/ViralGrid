@@ -1,0 +1,47 @@
+# Render Blueprint — deploys the FastAPI backend (Docker, with ffmpeg) and the
+# React frontend (static site). See README.md for the full deployment guide.
+services:
+  # ---------- Backend API ----------
+  - type: web
+    name: viralgrid-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/platforms
+    envVars:
+      - key: MONGO_URL # MongoDB Atlas connection string — set in the Render dashboard
+        sync: false
+      - key: DB_NAME
+        value: viralgrid
+      - key: CORS_ORIGINS # your frontend URL, e.g. https://viralgrid-frontend.onrender.com
+        sync: false
+      - key: EMERGENT_LLM_KEY # optional — enables AI copy generation; leave empty to disable
+        sync: false
+      - key: ALLOWED_EMAILS # recommended — comma-separated Google emails allowed to sign in
+        sync: false
+    # Uploaded media lives on local disk, which is wiped on every deploy/restart.
+    # On a paid plan, uncomment to persist uploads:
+    # disk:
+    #   name: uploads
+    #   mountPath: /app/uploads
+    #   sizeGB: 1
+
+  # ---------- Frontend (static React build) ----------
+  - type: web
+    name: viralgrid-frontend
+    runtime: static
+    buildCommand: cd frontend && yarn install && yarn build
+    staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL # your backend URL, e.g. https://viralgrid-backend.onrender.com
+        sync: false
+      - key: NODE_VERSION
+        value: "20"
+      - key: CI # prevent CRA from treating eslint warnings as build errors
+        value: "false"
+    routes:
+      # SPA fallback — client-side routing (react-router) needs every path to serve index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html

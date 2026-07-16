@@ -1,0 +1,650 @@
+import os
+import json
+import uuid
+import random
+import logging
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Dict, Any
+
+from dotenv import load_dotenv
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi.responses import FileResponse
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import httpx
+import aiofiles
+
+from platforms import PLATFORM_SPECS, validate_media_for_platform, build_optimization_plan
+from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video
+from storage import APP_NAME, init_storage, put_object, get_object
+
+mongo_url = os.environ.get('MONGO_URL')
+if not mongo_url:
+    raise RuntimeError(
+        "MONGO_URL environment variable is not set. "
+        "Set it to your MongoDB connection string (e.g. a MongoDB Atlas URI) in backend/.env or the host's environment."
+    )
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ.get('DB_NAME', 'viralgrid')]
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("crosspost")
+
+app = FastAPI()
+api = APIRouter(prefix="/api")
+
+AUTH_API = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+
+
+# ---------- Auth ----------
+class User(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+
+
+async def get_current_user(request: Request) -> User:
+    token = request.cookies.get("session_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    session = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    expires_at = session["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Session expired")
+    user_doc = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=401, detail="User not found")
+    return User(**user_doc)
+
+
+class SessionRequest(BaseModel):
+    session_id: str
+
+
+@api.post("/auth/session")
+async def create_session(body: SessionRequest, response: Response):
+    async with httpx.AsyncClient() as hc:
+        resp = await hc.get(AUTH_API, headers={"X-Session-ID": body.session_id})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid session ID")
+    data = resp.json()
+    # Private instance: if ALLOWED_EMAILS is set, only those Google accounts may sign in
+    allowed = [e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()]
+    if allowed and data["email"].strip().lower() not in allowed:
+        raise HTTPException(status_code=403, detail="This is a private workspace — your account is not authorized")
+    existing = await db.users.find_one({"email": data["email"]}, {"_id": 0})
+    if existing:
+        user_id = existing["user_id"]
+        await db.users.update_one({"user_id": user_id}, {"$set": {"name": data["name"], "picture": data.get("picture")}})
+    else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": user_id, "email": data["email"], "name": data["name"],
+            "picture": data.get("picture"), "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    session_token = data["session_token"]
+    await db.user_sessions.insert_one({
+        "user_id": user_id, "session_token": session_token,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    response.set_cookie("session_token", session_token, max_age=7 * 24 * 3600, httponly=True, secure=True, samesite="none", path="/")
+    return {"user_id": user_id, "email": data["email"], "name": data["name"], "picture": data.get("picture")}
+
+
+@api.get("/auth/me")
+async def get_me(user: User = Depends(get_current_user)):
+    return user
+
+
+@api.post("/auth/logout")
+async def logout(request: Request, response: Response):
+    token = request.cookies.get("session_token")
+    if token:
+        await db.user_sessions.delete_one({"session_token": token})
+    response.delete_cookie("session_token", path="/")
+    return {"ok": True}
+
+
+# ---------- Platform connections (simulated) ----------
+@api.get("/platforms")
+async def list_platforms():
+    return [{"id": k, **{kk: vv for kk, vv in v.items()}} for k, v in PLATFORM_SPECS.items()]
+
+
+@api.get("/connections")
+async def get_connections(user: User = Depends(get_current_user)):
+    conns = await db.connections.find({"user_id": user.user_id}, {"_id": 0}).to_list(50)
+    return conns
+
+
+class ConnectRequest(BaseModel):
+    platform: str
+
+
+@api.post("/connections")
+async def connect_platform(body: ConnectRequest, user: User = Depends(get_current_user)):
+    if body.platform not in PLATFORM_SPECS:
+        raise HTTPException(status_code=400, detail="Unknown platform")
+    handle = f"@{user.name.split()[0].lower()}_{body.platform.split('_')[0]}"
+    doc = {
+        "user_id": user.user_id, "platform": body.platform, "handle": handle,
+        "status": "connected", "simulated": True,
+        "connected_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.connections.update_one({"user_id": user.user_id, "platform": body.platform}, {"$set": doc}, upsert=True)
+    return doc
+
+
+@api.delete("/connections/{platform}")
+async def disconnect_platform(platform: str, user: User = Depends(get_current_user)):
+    await db.connections.delete_one({"user_id": user.user_id, "platform": platform})
+    return {"ok": True}
+
+
+# ---------- Media ----------
+CATEGORY_DIRS = {"uploads": UPLOAD_DIR, "thumbs": THUMB_DIR, "optimized": OPT_DIR}
+
+
+async def persist_file(local_path: Path, category: str, filename: str, content_type: str) -> Optional[str]:
+    """Upload a local file to Emergent object storage and record the reference."""
+    storage_path = f"{APP_NAME}/{category}/{filename}"
+    try:
+        result = await put_object(storage_path, local_path.read_bytes(), content_type)
+        await db.stored_files.update_one(
+            {"filename": filename},
+            {"$set": {
+                "filename": filename, "storage_path": result["path"], "category": category,
+                "content_type": content_type, "is_deleted": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+        return result["path"]
+    except Exception as e:
+        logger.error(f"Object storage persist failed for {filename}: {e}")
+        return None
+
+
+@api.post("/media/upload")
+async def upload_media(file: UploadFile = File(...), user: User = Depends(get_current_user)):
+    ext = Path(file.filename or "file").suffix.lower() or ".bin"
+    media_id = f"media_{uuid.uuid4().hex[:12]}"
+    fname = f"{media_id}{ext}"
+    dest = UPLOAD_DIR / fname
+    size = 0
+    async with aiofiles.open(dest, "wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            size += len(chunk)
+            await f.write(chunk)
+    mime = file.content_type or ""
+    mtype = "video" if mime.startswith("video") or ext in (".mp4", ".mov", ".webm", ".mkv", ".avi") else "image"
+    info = await probe_media(str(dest))
+    thumb = None
+    if mtype == "video":
+        thumb = await generate_thumbnail(str(dest), f"{media_id}.jpg")
+    storage_path = await persist_file(dest, "uploads", fname, mime or "application/octet-stream")
+    thumb_storage_path = None
+    if thumb:
+        thumb_storage_path = await persist_file(THUMB_DIR / thumb, "thumbs", thumb, "image/jpeg")
+    doc = {
+        "media_id": media_id, "user_id": user.user_id, "filename": fname,
+        "original_name": file.filename, "type": mtype, "mime": mime, "size": size,
+        "width": info.get("width"), "height": info.get("height"),
+        "duration": info.get("duration"), "codec": info.get("codec"),
+        "bitrate": info.get("bitrate"), "fps": info.get("fps"), "audio_codec": info.get("audio_codec"),
+        "thumbnail": thumb, "storage_path": storage_path, "thumb_storage_path": thumb_storage_path,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.media.insert_one({**doc})
+    return doc
+
+
+@api.get("/media")
+async def list_media(user: User = Depends(get_current_user)):
+    return await db.media.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@api.get("/media/file/{filename}")
+async def serve_media(filename: str):
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    for d in (UPLOAD_DIR, THUMB_DIR, OPT_DIR):
+        p = d / filename
+        if p.exists() and p.is_file():
+            return FileResponse(p)
+    # local cache miss — restore from object storage
+    record = await db.stored_files.find_one({"filename": filename, "is_deleted": False}, {"_id": 0})
+    if record:
+        try:
+            data, content_type = await get_object(record["storage_path"])
+            cache_dir = CATEGORY_DIRS.get(record.get("category"), UPLOAD_DIR)
+            (cache_dir / filename).write_bytes(data)
+            return FileResponse(cache_dir / filename, media_type=record.get("content_type") or content_type)
+        except Exception as e:
+            logger.error(f"Object storage fetch failed for {filename}: {e}")
+    raise HTTPException(status_code=404, detail="File not found")
+
+
+class ValidateRequest(BaseModel):
+    media_id: str
+    platforms: List[str]
+
+
+@api.post("/media/validate")
+async def validate_media(body: ValidateRequest, user: User = Depends(get_current_user)):
+    media = await db.media.find_one({"media_id": body.media_id, "user_id": user.user_id}, {"_id": 0})
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    results = [validate_media_for_platform(media, p) for p in body.platforms if p in PLATFORM_SPECS]
+    return {"media": media, "validations": results}
+
+
+# ---------- AI generation ----------
+class AIRequest(BaseModel):
+    topic: str
+    tone: Optional[str] = "engaging"
+    platforms: List[str] = []
+
+
+@api.post("/ai/generate")
+async def ai_generate(body: AIRequest, user: User = Depends(get_current_user)):
+    if not os.environ.get("EMERGENT_LLM_KEY"):
+        raise HTTPException(status_code=503, detail="AI generation is not configured (EMERGENT_LLM_KEY not set)")
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+    except ImportError:
+        raise HTTPException(status_code=503, detail="AI generation is not available (emergentintegrations package not installed)")
+    plat_names = ", ".join(PLATFORM_SPECS[p]["name"] for p in body.platforms if p in PLATFORM_SPECS) or "social media"
+    chat = LlmChat(
+        api_key=os.environ["EMERGENT_LLM_KEY"],
+        session_id=f"ai_{uuid.uuid4().hex[:8]}",
+        system_message="You are a social media copywriting expert. Respond ONLY with valid JSON, no markdown fences.",
+    ).with_model("openai", "gpt-5.4")
+    prompt = (
+        f"Write social media copy for content about: {body.topic}. Tone: {body.tone}. Target platforms: {plat_names}.\n"
+        'Return JSON exactly like: {"caption": "short punchy caption under 100 chars", '
+        '"description": "2-3 sentence description", "hashtags": ["tag1","tag2", ... 8-12 hashtags without # symbol]}'
+    )
+    result = await chat.send_message(UserMessage(text=prompt))
+    text = result.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1].lstrip("json").strip()
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        raise HTTPException(status_code=502, detail="AI returned invalid response, please retry")
+    return {"caption": parsed.get("caption", ""), "description": parsed.get("description", ""), "hashtags": parsed.get("hashtags", [])}
+
+
+# ---------- Posts ----------
+class PostCreate(BaseModel):
+    title: str
+    caption: str = ""
+    description: str = ""
+    hashtags: List[str] = []
+    tags: List[str] = []
+    media_ids: List[str] = []
+    platforms: List[str] = []
+    platform_overrides: Dict[str, Any] = {}
+    action: str = "draft"  # draft | schedule | publish
+    scheduled_at: Optional[str] = None
+    timezone: Optional[str] = "UTC"
+    recurrence: str = "none"  # none | daily | weekly
+
+
+def _simulate_metrics() -> dict:
+    views = random.randint(800, 60000)
+    return {
+        "views": views,
+        "likes": int(views * random.uniform(0.03, 0.12)),
+        "comments": int(views * random.uniform(0.002, 0.01)),
+        "shares": int(views * random.uniform(0.005, 0.03)),
+    }
+
+
+async def _publish_post(post: dict):
+    """Simulated publishing engine: real ffmpeg optimization + mock platform delivery."""
+    user_id = post["user_id"]
+    await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {"status": "publishing"}})
+    conns = {c["platform"] for c in await db.connections.find({"user_id": user_id, "status": "connected"}, {"_id": 0}).to_list(50)}
+    media = None
+    if post.get("media_ids"):
+        media = await db.media.find_one({"media_id": post["media_ids"][0]}, {"_id": 0})
+    results = post.get("platform_results", {})
+    transcode_cache = {}
+    for platform in post.get("platforms", []):
+        if platform not in PLATFORM_SPECS:
+            continue
+        if platform not in conns:
+            results[platform] = {"status": "failed", "error": f"{PLATFORM_SPECS[platform]['name']} account not connected", "attempts": results.get(platform, {}).get("attempts", 0) + 1}
+            continue
+        optimization = None
+        optimized_file = None
+        if media:
+            optimization = build_optimization_plan(media, platform)
+            validation = validate_media_for_platform(media, platform)
+            if validation["status"] == "error":
+                results[platform] = {"status": "failed", "error": "; ".join(c["message"] for c in validation["checks"] if c["level"] == "error"), "attempts": results.get(platform, {}).get("attempts", 0) + 1}
+                continue
+            if media["type"] == "video" and optimization["transform"] != "passthrough":
+                spec = PLATFORM_SPECS[platform]
+                key = (spec["width"], spec["height"], spec["video_bitrate_k"])
+                if key not in transcode_cache:
+                    out_name = f"{post['post_id']}_{spec['width']}x{spec['height']}.mp4"
+                    transcode_cache[key] = await transcode_video(str(UPLOAD_DIR / media["filename"]), out_name, spec["width"], spec["height"], spec["video_bitrate_k"])
+                    if transcode_cache[key]:
+                        await persist_file(OPT_DIR / transcode_cache[key], "optimized", transcode_cache[key], "video/mp4")
+                optimized_file = transcode_cache[key]
+                if not optimized_file:
+                    optimization["transform"] = "passthrough_fallback"
+        results[platform] = {
+            "status": "published",
+            "url": f"https://{platform.replace('_', '.')}/p/{uuid.uuid4().hex[:10]}",
+            "published_at": datetime.now(timezone.utc).isoformat(),
+            "optimization": optimization,
+            "optimized_file": optimized_file,
+            "metrics": _simulate_metrics(),
+            "simulated": True,
+            "attempts": results.get(platform, {}).get("attempts", 0) + 1,
+        }
+    statuses = [r["status"] for r in results.values()]
+    if not statuses:
+        final = "failed"
+    elif all(s == "published" for s in statuses):
+        final = "published"
+    elif any(s == "published" for s in statuses):
+        final = "partial"
+    else:
+        final = "failed"
+    await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {
+        "status": final, "platform_results": results,
+        "published_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }})
+    # recurring: clone into next occurrence
+    if post.get("recurrence") in ("daily", "weekly") and post.get("scheduled_at"):
+        delta = timedelta(days=1 if post["recurrence"] == "daily" else 7)
+        next_at = datetime.fromisoformat(post["scheduled_at"].replace("Z", "+00:00")) + delta
+        clone = {k: v for k, v in post.items() if k not in ("_id",)}
+        clone.update({
+            "post_id": f"post_{uuid.uuid4().hex[:12]}", "status": "scheduled",
+            "scheduled_at": next_at.isoformat(), "platform_results": {},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+        clone.pop("published_at", None)
+        await db.posts.insert_one(clone)
+    return final
+
+
+@api.post("/posts")
+async def create_post(body: PostCreate, user: User = Depends(get_current_user)):
+    if body.action in ("schedule",) and not body.scheduled_at:
+        raise HTTPException(status_code=400, detail="scheduled_at required for scheduling")
+    if body.action in ("publish", "schedule") and not body.platforms:
+        raise HTTPException(status_code=400, detail="Select at least one platform")
+    post_id = f"post_{uuid.uuid4().hex[:12]}"
+    status = {"draft": "draft", "schedule": "scheduled", "publish": "publishing"}.get(body.action, "draft")
+    doc = {
+        "post_id": post_id, "user_id": user.user_id, "title": body.title,
+        "caption": body.caption, "description": body.description,
+        "hashtags": body.hashtags, "tags": body.tags, "media_ids": body.media_ids,
+        "platforms": body.platforms, "platform_overrides": body.platform_overrides,
+        "status": status, "scheduled_at": body.scheduled_at, "timezone": body.timezone,
+        "recurrence": body.recurrence, "platform_results": {},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.posts.insert_one({**doc})
+    if body.action == "publish":
+        final = await _publish_post(doc)
+        doc["status"] = final
+        doc["platform_results"] = (await db.posts.find_one({"post_id": post_id}, {"_id": 0}))["platform_results"]
+    return doc
+
+
+@api.get("/posts")
+async def list_posts(status: Optional[str] = None, user: User = Depends(get_current_user)):
+    q = {"user_id": user.user_id}
+    if status:
+        q["status"] = {"$in": status.split(",")}
+    return await db.posts.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@api.get("/posts/{post_id}")
+async def get_post(post_id: str, user: User = Depends(get_current_user)):
+    post = await db.posts.find_one({"post_id": post_id, "user_id": user.user_id}, {"_id": 0})
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
+class PostUpdate(BaseModel):
+    title: Optional[str] = None
+    caption: Optional[str] = None
+    description: Optional[str] = None
+    hashtags: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    platforms: Optional[List[str]] = None
+    platform_overrides: Optional[Dict[str, Any]] = None
+    scheduled_at: Optional[str] = None
+    timezone: Optional[str] = None
+    recurrence: Optional[str] = None
+    status: Optional[str] = None
+
+
+@api.put("/posts/{post_id}")
+async def update_post(post_id: str, body: PostUpdate, user: User = Depends(get_current_user)):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.posts.update_one({"post_id": post_id, "user_id": user.user_id}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return await db.posts.find_one({"post_id": post_id}, {"_id": 0})
+
+
+@api.delete("/posts/{post_id}")
+async def delete_post(post_id: str, user: User = Depends(get_current_user)):
+    res = await db.posts.delete_one({"post_id": post_id, "user_id": user.user_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return {"ok": True}
+
+
+class BulkItem(BaseModel):
+    title: str
+    caption: str = ""
+    description: str = ""
+    hashtags: List[str] = []
+    tags: List[str] = []
+    media_ids: List[str] = []
+    platforms: List[str] = []
+    platform_overrides: Dict[str, Any] = {}
+    scheduled_at: str
+    timezone: Optional[str] = "UTC"
+    recurrence: str = "none"
+
+
+class BulkCreateRequest(BaseModel):
+    items: List[BulkItem]
+
+
+@api.post("/posts/bulk")
+async def bulk_create_posts(body: BulkCreateRequest, user: User = Depends(get_current_user)):
+    if not body.items:
+        raise HTTPException(status_code=400, detail="No items provided")
+    if len(body.items) > 200:
+        raise HTTPException(status_code=400, detail="Bulk limit is 200 posts per request")
+    created = []
+    errors = []
+    for idx, item in enumerate(body.items):
+        try:
+            if not item.title.strip():
+                raise ValueError("Title required")
+            if not item.platforms:
+                raise ValueError("At least one platform required")
+            if not item.scheduled_at:
+                raise ValueError("scheduled_at required")
+            # validate iso datetime
+            datetime.fromisoformat(item.scheduled_at.replace("Z", "+00:00"))
+            post_id = f"post_{uuid.uuid4().hex[:12]}"
+            doc = {
+                "post_id": post_id, "user_id": user.user_id, "title": item.title,
+                "caption": item.caption, "description": item.description,
+                "hashtags": item.hashtags, "tags": item.tags, "media_ids": item.media_ids,
+                "platforms": item.platforms, "platform_overrides": item.platform_overrides,
+                "status": "scheduled", "scheduled_at": item.scheduled_at,
+                "timezone": item.timezone, "recurrence": item.recurrence,
+                "platform_results": {}, "bulk_batch": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.posts.insert_one({**doc})
+            created.append({"post_id": post_id, "scheduled_at": item.scheduled_at, "title": item.title})
+        except Exception as e:
+            errors.append({"index": idx, "error": str(e)})
+    return {"created_count": len(created), "created": created, "errors": errors}
+
+
+@api.post("/posts/{post_id}/publish")
+async def publish_now(post_id: str, user: User = Depends(get_current_user)):
+    post = await db.posts.find_one({"post_id": post_id, "user_id": user.user_id}, {"_id": 0})
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    if not post.get("platforms"):
+        raise HTTPException(status_code=400, detail="No platforms selected")
+    final = await _publish_post(post)
+    return await db.posts.find_one({"post_id": post_id}, {"_id": 0})
+
+
+@api.post("/posts/{post_id}/retry")
+async def retry_post(post_id: str, user: User = Depends(get_current_user)):
+    post = await db.posts.find_one({"post_id": post_id, "user_id": user.user_id}, {"_id": 0})
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    failed = [p for p, r in post.get("platform_results", {}).items() if r.get("status") == "failed"]
+    if not failed:
+        raise HTTPException(status_code=400, detail="No failed platforms to retry")
+    retry_post_doc = {**post, "platforms": failed}
+    await _publish_post(retry_post_doc)
+    return await db.posts.find_one({"post_id": post_id}, {"_id": 0})
+
+
+# ---------- Dashboard & Analytics ----------
+@api.get("/dashboard/stats")
+async def dashboard_stats(user: User = Depends(get_current_user)):
+    posts = await db.posts.find({"user_id": user.user_id}, {"_id": 0}).to_list(1000)
+    conns = await db.connections.find({"user_id": user.user_id}, {"_id": 0}).to_list(50)
+    total_views = sum(r.get("metrics", {}).get("views", 0) for p in posts for r in p.get("platform_results", {}).values() if r.get("status") == "published")
+    return {
+        "total_posts": len(posts),
+        "published": sum(1 for p in posts if p["status"] in ("published", "partial")),
+        "scheduled": sum(1 for p in posts if p["status"] == "scheduled"),
+        "drafts": sum(1 for p in posts if p["status"] == "draft"),
+        "failed": sum(1 for p in posts if p["status"] == "failed"),
+        "connected_platforms": len(conns),
+        "total_views": total_views,
+    }
+
+
+@api.get("/analytics/overview")
+async def analytics_overview(user: User = Depends(get_current_user)):
+    posts = await db.posts.find({"user_id": user.user_id, "status": {"$in": ["published", "partial"]}}, {"_id": 0}).to_list(1000)
+    per_platform = {}
+    timeline = {}
+    totals = {"views": 0, "likes": 0, "comments": 0, "shares": 0}
+    for p in posts:
+        day = (p.get("published_at") or p["created_at"])[:10]
+        for plat, r in p.get("platform_results", {}).items():
+            if r.get("status") != "published":
+                continue
+            m = r.get("metrics", {})
+            pp = per_platform.setdefault(plat, {"platform": plat, "name": PLATFORM_SPECS.get(plat, {}).get("name", plat), "posts": 0, "views": 0, "likes": 0, "shares": 0, "comments": 0})
+            pp["posts"] += 1
+            for k in ("views", "likes", "shares", "comments"):
+                pp[k] += m.get(k, 0)
+                totals[k] += m.get(k, 0)
+            t = timeline.setdefault(day, {"date": day, "views": 0, "likes": 0})
+            t["views"] += m.get("views", 0)
+            t["likes"] += m.get("likes", 0)
+    return {
+        "totals": totals,
+        "per_platform": sorted(per_platform.values(), key=lambda x: -x["views"]),
+        "timeline": sorted(timeline.values(), key=lambda x: x["date"]),
+        "published_posts": len(posts),
+    }
+
+
+# ---------- Scheduler ----------
+scheduler = AsyncIOScheduler()
+
+
+def _parse_dt(value: str) -> Optional[datetime]:
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+async def check_due_posts():
+    # scheduled_at is stored as an ISO string whose format varies (Z vs +00:00 suffix),
+    # so compare parsed datetimes instead of raw strings
+    now = datetime.now(timezone.utc)
+    scheduled = await db.posts.find({"status": "scheduled"}, {"_id": 0}).to_list(500)
+    due = [p for p in scheduled if (dt := _parse_dt(p.get("scheduled_at") or "")) and dt <= now][:50]
+    for post in due:
+        logger.info(f"Auto-publishing scheduled post {post['post_id']}")
+        try:
+            await _publish_post(post)
+        except Exception as e:
+            logger.error(f"Scheduled publish failed for {post['post_id']}: {e}")
+            await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {"status": "failed", "error": str(e)}})
+
+
+@app.on_event("startup")
+async def startup():
+    try:
+        await init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Object storage init failed: {e}")
+    scheduler.add_job(check_due_posts, "interval", seconds=30, id="publish_due")
+    scheduler.start()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    scheduler.shutdown(wait=False)
+    client.close()
+
+
+app.include_router(api)
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
