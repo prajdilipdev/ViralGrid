@@ -4,22 +4,39 @@ import { PLATFORM_META } from "../lib/platforms";
 import { toast } from "sonner";
 import { Plug, Unplug } from "lucide-react";
 
+const INSTAGRAM = "instagram_reels";
+
 export default function Connections() {
   const [conns, setConns] = useState([]);
   const [busy, setBusy] = useState(null);
+  const [igLive, setIgLive] = useState(false);
 
   const load = () => api.get("/connections").then((r) => setConns(r.data)).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.get("/instagram/status").then((r) => setIgLive(r.data.configured)).catch(() => {});
+    // Surface the result of the Instagram OAuth redirect
+    const params = new URLSearchParams(window.location.search);
+    const ig = params.get("ig");
+    if (ig === "connected") toast.success(`Instagram connected${params.get("msg") ? ` — @${params.get("msg")}` : ""}`);
+    else if (ig === "error") toast.error(params.get("msg") || "Instagram connection failed");
+    if (ig) window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   const connMap = Object.fromEntries(conns.map((c) => [c.platform, c]));
 
   const connect = async (platform) => {
     setBusy(platform);
     try {
+      if (platform === INSTAGRAM && igLive) {
+        const r = await api.get("/instagram/authorize");
+        window.location.href = r.data.url; // hand off to Instagram
+        return;
+      }
       await api.post("/connections", { platform });
       toast.success(`${PLATFORM_META[platform].name} connected`);
       load();
-    } catch { toast.error("Connection failed"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Connection failed"); }
     setBusy(null);
   };
 
@@ -38,7 +55,9 @@ export default function Connections() {
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Integrations</p>
       <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-3" style={{ fontFamily: "Outfit" }}>Account Connections</h1>
       <p className="text-sm text-white/50 mb-8 max-w-2xl">
-        Simulated connections for now — swap in real OAuth credentials per platform when your developer apps are approved.
+        {igLive
+          ? "Instagram publishes for real via the Instagram Content Publishing API. The remaining platforms are simulated until their developer apps are set up."
+          : "All connections are simulated. Configure Instagram credentials on the server to publish to Instagram for real."}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-t border-l border-white/5">
@@ -51,7 +70,14 @@ export default function Connections() {
                   <Icon size={22} style={{ color }} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{name}</p>
+                    {id === INSTAGRAM && igLive ? (
+                      <span className="text-[9px] tracking-wider uppercase font-semibold px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-300 border border-emerald-400/20">Live</span>
+                    ) : (
+                      <span className="text-[9px] tracking-wider uppercase font-semibold px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/10">Simulated</span>
+                    )}
+                  </div>
                   <p className="text-xs text-white/40">{conn ? conn.handle : "Not connected"}</p>
                 </div>
                 <span className={`w-2 h-2 rounded-full ${conn ? "bg-emerald-400" : "bg-white/20"}`} />

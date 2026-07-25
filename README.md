@@ -2,7 +2,7 @@
 
 Upload once, optimize automatically (ffmpeg), and publish to YouTube Shorts, Instagram Reels, TikTok, X, Facebook Reels, Pinterest and LinkedIn — with scheduling, bulk scheduling (CSV / slot templates), analytics and AI copy generation.
 
-> **Note:** platform "publishing" is **simulated** (no real YouTube/TikTok/etc. APIs are called). Media optimization via ffmpeg is real.
+> **Note:** **Instagram publishes for real** when configured (see below). The other six platforms are **simulated** — no real API calls. Media optimization via ffmpeg is real throughout.
 
 ## Stack
 
@@ -70,6 +70,38 @@ After the first deploy you'll know both URLs (e.g. `https://viralgrid-backend.on
 - **Ephemeral disk** — uploaded media is stored on the service's local disk, which is wiped on every deploy/restart. Options: attach a Render persistent disk (paid; uncomment the `disk:` block in `render.yaml`), or set `EMERGENT_LLM_KEY` so files are backed up to Emergent object storage and restored on demand.
 - **Cross-site cookies** — the session cookie is `SameSite=None; Secure`, which works on Render since both services are HTTPS. It will *not* work over plain HTTP.
 
+## Enabling real Instagram publishing
+
+Uses the [Instagram API with Instagram Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/) — **no Facebook Page required**.
+
+### 1. Instagram account
+Convert your account to **Business** or **Creator** (Instagram app → Settings → Account type). Personal accounts cannot publish via API.
+
+### 2. Meta app
+1. At [developers.facebook.com/apps](https://developers.facebook.com/apps) create an app → use case **"Other"** → type **Business**.
+2. Add the **Instagram** product → **API setup with Instagram login**.
+3. Under *Business login settings*, set the **OAuth redirect URI** to exactly:
+   `https://<your-backend>.onrender.com/api/instagram/callback`
+4. Add your Instagram account as an app user (Roles → Instagram Testers, then accept the invite in Instagram → Settings → Website permissions). While the app is in Development mode this lets you publish to your **own** account without Meta App Review.
+5. Copy the **Instagram App ID** and **Instagram App Secret**.
+
+### 3. Render env vars (backend)
+| Variable | Value |
+|---|---|
+| `IG_APP_ID` | Instagram App ID |
+| `IG_APP_SECRET` | Instagram App Secret |
+| `PUBLIC_BACKEND_URL` | `https://<your-backend>.onrender.com` |
+
+Redeploy, then open **Connections** — Instagram shows a **Live** badge. Click *Connect Account*, approve on Instagram, and you're linked. Publishing to Instagram now creates real posts.
+
+### How it works / limits
+- Publishing is the standard 3-step flow: create media container → poll until Instagram finishes processing → publish. Instagram **fetches your video from a public URL**, so `PUBLIC_BACKEND_URL` must be reachable and HTTPS.
+- **Free-tier caveat:** if the backend is asleep or has restarted (wiping local uploads), Instagram's fetch fails. For reliable publishing use a paid instance with a persistent disk.
+- Reels: 9:16, 5–90s. The app auto-transcodes to 1080x1920 before publishing.
+- Access tokens last 60 days and are auto-refreshed every 12 hours by a background job.
+- Instagram allows **100 API posts per 24 hours**.
+- Leaving `IG_APP_ID`/`IG_APP_SECRET` unset keeps Instagram simulated like the rest.
+
 ## Environment variables
 
 | Variable | Where | Required | Description |
@@ -78,6 +110,8 @@ After the first deploy you'll know both URLs (e.g. `https://viralgrid-backend.on
 | `DB_NAME` | backend | no | Database name (default `viralgrid`) |
 | `CORS_ORIGINS` | backend | production | Comma-separated allowed origins (defaults to `*`) |
 | `ALLOWED_EMAILS` | backend | recommended | Comma-separated Google emails allowed to sign in (unset = anyone) |
+| `IG_APP_ID` / `IG_APP_SECRET` | backend | no | Meta app credentials — enables real Instagram publishing |
+| `PUBLIC_BACKEND_URL` | backend | with Instagram | This backend's own https URL (OAuth redirect + media fetch) |
 | `EMERGENT_LLM_KEY` | backend | no | Enables AI copy generation + Emergent object storage |
 | `REACT_APP_BACKEND_URL` | frontend (build time) | yes | Backend base URL; falls back to same-origin |
 

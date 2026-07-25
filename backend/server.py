@@ -13,7 +13,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
@@ -24,6 +24,7 @@ import aiofiles
 from platforms import PLATFORM_SPECS, validate_media_for_platform, build_optimization_plan
 from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video
 from storage import APP_NAME, init_storage, put_object, get_object
+import instagram
 
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
@@ -130,9 +131,15 @@ async def list_platforms():
     return [{"id": k, **{kk: vv for kk, vv in v.items()}} for k, v in PLATFORM_SPECS.items()]
 
 
+# Never expose stored OAuth tokens to the client.
+CONN_PROJECTION = {"_id": 0, "access_token": 0}
+
+INSTAGRAM = "instagram_reels"
+
+
 @api.get("/connections")
 async def get_connections(user: User = Depends(get_current_user)):
-    conns = await db.connections.find({"user_id": user.user_id}, {"_id": 0}).to_list(50)
+    conns = await db.connections.find({"user_id": user.user_id}, CONN_PROJECTION).to_list(50)
     return conns
 
 
@@ -144,6 +151,8 @@ class ConnectRequest(BaseModel):
 async def connect_platform(body: ConnectRequest, user: User = Depends(get_current_user)):
     if body.platform not in PLATFORM_SPECS:
         raise HTTPException(status_code=400, detail="Unknown platform")
+    if body.platform == INSTAGRAM and instagram.is_configured():
+        raise HTTPException(status_code=400, detail="Use /api/instagram/authorize to connect Instagram")
     handle = f"@{user.name.split()[0].lower()}_{body.platform.split('_')[0]}"
     doc = {
         "user_id": user.user_id, "platform": body.platform, "handle": handle,
@@ -158,6 +167,89 @@ async def connect_platform(body: ConnectRequest, user: User = Depends(get_curren
 async def disconnect_platform(platform: str, user: User = Depends(get_current_user)):
     await db.connections.delete_one({"user_id": user.user_id, "platform": platform})
     return {"ok": True}
+
+
+# ---------- Instagram (real publishing) ----------
+def _frontend_url() -> str:
+    origins = os.environ.get("CORS_ORIGINS", "").split(",")
+    first = next((o.strip().rstrip("/") for o in origins if o.strip() and o.strip() != "*"), "")
+    return first
+
+
+@api.get("/instagram/status")
+async def instagram_status():
+    """Tells the UI whether real Instagram publishing is available."""
+    return {"configured": instagram.is_configured()}
+
+
+@api.get("/instagram/authorize")
+async def instagram_authorize(user: User = Depends(get_current_user)):
+    if not instagram.is_configured():
+        raise HTTPException(status_code=503, detail="Instagram is not configured on this server")
+    state = uuid.uuid4().hex
+    await db.oauth_states.insert_one({
+        "state": state, "user_id": user.user_id, "platform": INSTAGRAM,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    try:
+        return {"url": instagram.authorize_url(state)}
+    except instagram.InstagramError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api.get("/instagram/callback")
+async def instagram_callback(request: Request, code: Optional[str] = None,
+                             state: Optional[str] = None, error: Optional[str] = None):
+    """Instagram redirects the browser here after the user approves access."""
+    frontend = _frontend_url()
+    def back(status: str, message: str = ""):
+        from urllib.parse import urlencode
+        q = urlencode({"ig": status, **({"msg": message[:200]} if message else {})})
+        target = f"{frontend}/connections?{q}" if frontend else f"/api/instagram/result?{q}"
+        return RedirectResponse(target, status_code=303)
+
+    if error or not code or not state:
+        return back("error", error or "Authorization was cancelled")
+
+    record = await db.oauth_states.find_one_and_delete({"state": state, "platform": INSTAGRAM})
+    if not record:
+        return back("error", "Invalid or expired authorization state")
+
+    try:
+        tokens = await instagram.exchange_code(code)
+        profile = await instagram.get_profile(tokens["access_token"])
+    except instagram.InstagramError as e:
+        logger.error(f"Instagram connect failed: {e}")
+        return back("error", str(e))
+    except Exception as e:
+        logger.error(f"Instagram connect failed: {e}")
+        return back("error", "Could not complete Instagram connection")
+
+    if not profile["ig_user_id"]:
+        return back("error", "Instagram did not return a professional account id")
+
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(tokens["expires_in"]))
+    await db.connections.update_one(
+        {"user_id": record["user_id"], "platform": INSTAGRAM},
+        {"$set": {
+            "user_id": record["user_id"], "platform": INSTAGRAM,
+            "handle": f"@{profile['username']}" if profile["username"] else "@instagram",
+            "status": "connected", "simulated": False,
+            "ig_user_id": profile["ig_user_id"],
+            "account_type": profile.get("account_type"),
+            "access_token": tokens["access_token"],
+            "token_expires_at": expires_at.isoformat(),
+            "connected_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return back("connected", profile["username"])
+
+
+@api.get("/instagram/result")
+async def instagram_result(ig: str = "", msg: str = ""):
+    """Fallback landing page when CORS_ORIGINS has no explicit frontend URL."""
+    return {"status": ig, "message": msg}
 
 
 # ---------- Media ----------
@@ -321,11 +413,68 @@ def _simulate_metrics() -> dict:
     }
 
 
+def _build_caption(post: dict) -> str:
+    parts = [post.get("caption") or post.get("title") or ""]
+    if post.get("description"):
+        parts.append(post["description"])
+    tags = post.get("hashtags") or []
+    if tags:
+        parts.append(" ".join(f"#{t.lstrip('#')}" for t in tags))
+    return "\n\n".join(p for p in parts if p).strip()
+
+
+async def _publish_to_instagram(conn: dict, post: dict, media: Optional[dict],
+                                optimized_file: Optional[str], optimization: Optional[dict],
+                                attempts: int) -> dict:
+    """Real Instagram publish. Returns a platform_results entry."""
+    fail = lambda msg: {"status": "failed", "error": msg, "attempts": attempts, "simulated": False}
+
+    if not media:
+        return fail("Instagram requires a photo or video — this post has no media")
+    base = (os.environ.get("PUBLIC_BACKEND_URL") or "").rstrip("/")
+    if not base:
+        return fail("PUBLIC_BACKEND_URL is not set — Instagram cannot fetch the media")
+    if not base.startswith("https://"):
+        return fail("PUBLIC_BACKEND_URL must be an https URL for Instagram to fetch media")
+
+    # Prefer the 9:16 transcode when we made one; Instagram fetches it by URL.
+    filename = optimized_file or media["filename"]
+    media_url = f"{base}/api/media/file/{filename}"
+    is_video = media.get("type") == "video"
+
+    try:
+        result = await instagram.publish(
+            conn["access_token"], conn["ig_user_id"], media_url,
+            _build_caption(post), is_video,
+        )
+    except instagram.InstagramError as e:
+        return fail(str(e))
+    except Exception as e:
+        logger.error(f"Instagram publish error for {post['post_id']}: {e}")
+        return fail(f"Instagram publish failed: {e}")
+
+    metrics = await instagram.get_insights(conn["access_token"], result["media_id"])
+    return {
+        "status": "published",
+        "url": result.get("permalink") or f"https://www.instagram.com/p/{result['media_id']}",
+        "published_at": datetime.now(timezone.utc).isoformat(),
+        "optimization": optimization,
+        "optimized_file": optimized_file,
+        "metrics": metrics or {"views": 0, "likes": 0, "comments": 0, "shares": 0},
+        "media_id": result["media_id"],
+        "simulated": False,
+        "attempts": attempts,
+    }
+
+
 async def _publish_post(post: dict):
-    """Simulated publishing engine: real ffmpeg optimization + mock platform delivery."""
+    """Publishing engine: real ffmpeg optimization, real Instagram delivery when
+    connected, simulated delivery for the remaining platforms."""
     user_id = post["user_id"]
     await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {"status": "publishing"}})
-    conns = {c["platform"] for c in await db.connections.find({"user_id": user_id, "status": "connected"}, {"_id": 0}).to_list(50)}
+    conn_docs = await db.connections.find({"user_id": user_id, "status": "connected"}, {"_id": 0}).to_list(50)
+    conn_map = {c["platform"]: c for c in conn_docs}
+    conns = set(conn_map)
     media = None
     if post.get("media_ids"):
         media = await db.media.find_one({"media_id": post["media_ids"][0]}, {"_id": 0})
@@ -356,6 +505,13 @@ async def _publish_post(post: dict):
                 optimized_file = transcode_cache[key]
                 if not optimized_file:
                     optimization["transform"] = "passthrough_fallback"
+        attempts = results.get(platform, {}).get("attempts", 0) + 1
+        conn = conn_map.get(platform, {})
+        if platform == INSTAGRAM and not conn.get("simulated", True):
+            results[platform] = await _publish_to_instagram(
+                conn, post, media, optimized_file, optimization, attempts,
+            )
+            continue
         results[platform] = {
             "status": "published",
             "url": f"https://{platform.replace('_', '.')}/p/{uuid.uuid4().hex[:10]}",
@@ -623,6 +779,27 @@ async def check_due_posts():
             await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {"status": "failed", "error": str(e)}})
 
 
+async def refresh_instagram_tokens():
+    """Long-lived IG tokens last 60 days; refresh any expiring within 10."""
+    if not instagram.is_configured():
+        return
+    soon = (datetime.now(timezone.utc) + timedelta(days=10)).isoformat()
+    conns = await db.connections.find(
+        {"platform": INSTAGRAM, "simulated": False, "token_expires_at": {"$lte": soon}}, {"_id": 0}
+    ).to_list(50)
+    for conn in conns:
+        try:
+            new = await instagram.refresh_long_lived_token(conn["access_token"])
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=int(new["expires_in"]))
+            await db.connections.update_one(
+                {"user_id": conn["user_id"], "platform": INSTAGRAM},
+                {"$set": {"access_token": new["access_token"], "token_expires_at": expires_at.isoformat()}},
+            )
+            logger.info(f"Refreshed Instagram token for {conn['user_id']}")
+        except Exception as e:
+            logger.error(f"Instagram token refresh failed for {conn['user_id']}: {e}")
+
+
 @app.on_event("startup")
 async def startup():
     try:
@@ -631,7 +808,12 @@ async def startup():
     except Exception as e:
         logger.error(f"Object storage init failed: {e}")
     scheduler.add_job(check_due_posts, "interval", seconds=30, id="publish_due")
+    scheduler.add_job(refresh_instagram_tokens, "interval", hours=12, id="refresh_ig_tokens")
     scheduler.start()
+    if instagram.is_configured():
+        logger.info("Instagram publishing: ENABLED (real)")
+    else:
+        logger.info("Instagram publishing: simulated (IG_APP_ID/IG_APP_SECRET not set)")
 
 
 @app.on_event("shutdown")

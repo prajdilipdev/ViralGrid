@@ -20,6 +20,12 @@ services:
         sync: false
       - key: ALLOWED_EMAILS # recommended — comma-separated Google emails allowed to sign in
         sync: false
+      - key: PUBLIC_BACKEND_URL # this service's own https URL — required for Instagram
+        sync: false
+      - key: IG_APP_ID # Meta app credentials — leave blank to keep Instagram simulated
+        sync: false
+      - key: IG_APP_SECRET
+        sync: false
     # Uploaded media lives on local disk, which is wiped on every deploy/restart.
     # On a paid plan, uncomment to persist uploads:
     # disk:
