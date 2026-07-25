@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
+import { toast } from "sonner";
+import dayjs from "dayjs";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from "recharts";
-import { Eye, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, RefreshCw, Trash2 } from "lucide-react";
 
 const KPI = ({ label, value, icon: Icon, testid }) => (
   <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
@@ -18,20 +20,52 @@ const tooltipStyle = { backgroundColor: "#111113", border: "1px solid rgba(255,2
 
 export default function Analytics() {
   const [data, setData] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    api.get("/analytics/overview").then((r) => setData(r.data)).catch(() => {});
-  }, []);
+  const load = useCallback(
+    () => api.get("/analytics/overview").then((r) => setData(r.data)).catch(() => {}),
+    [],
+  );
+  useEffect(() => { load(); }, [load]);
+
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const r = await api.post("/posts/sync");
+      const { deleted, refreshed, checked } = r.data;
+      if (deleted) toast.success(`${deleted} post${deleted > 1 ? "s" : ""} marked as deleted on Instagram`);
+      else if (refreshed) toast.success(`Refreshed metrics for ${refreshed} post${refreshed > 1 ? "s" : ""}`);
+      else toast.success(checked ? "Everything is up to date" : "No live Instagram posts to check");
+      await load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Sync failed");
+    }
+    setSyncing(false);
+  };
 
   if (!data) return <div className="p-8 text-white/40 text-sm">Loading analytics…</div>;
 
-  const { totals, per_platform, timeline } = data;
+  const { totals, per_platform, timeline, deleted = [] } = data;
 
   return (
     <div data-testid="analytics-page" className="p-6 sm:p-8">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Outfit" }}>Analytics</h1>
-      <p className="text-[11px] text-white/40 mb-6 uppercase tracking-widest">Simulated metrics — real platform data connects when API credentials are added</p>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+        <div>
+          <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
+          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Outfit" }}>Analytics</h1>
+        </div>
+        <button
+          data-testid="analytics-sync-button"
+          onClick={sync}
+          disabled={syncing}
+          title="Check Instagram for deleted posts and refresh metrics"
+          className="h-10 px-4 border border-white/15 rounded-md text-xs font-medium flex items-center gap-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
+          {syncing ? "Syncing…" : "Sync with Instagram"}
+        </button>
+      </div>
+      <p className="text-[11px] text-white/40 mb-6 uppercase tracking-widest">Instagram metrics are live · other platforms simulated</p>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 border-t border-l border-white/5">
         <KPI label="Views" value={totals.views} icon={Eye} testid="kpi-views" />
@@ -115,6 +149,51 @@ export default function Analytics() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {deleted.length > 0 && (
+        <div data-testid="analytics-deleted-section" className="border border-white/10 bg-[#0A0A0B] mt-6">
+          <div className="px-6 py-4 border-b border-white/10 flex items-center gap-2">
+            <Trash2 size={14} className="text-white/40" />
+            <h3 className="text-sm font-medium">Removed from platform</h3>
+            <span className="text-[10px] uppercase tracking-widest text-white/35 border border-white/15 rounded-sm px-2 py-0.5">
+              {deleted.length}
+            </span>
+          </div>
+          <p className="px-6 pt-4 text-[11px] text-white/40">
+            These posts were published by ViralGrid but no longer exist on the platform. Their numbers are excluded
+            from the totals above; the figures below are the last values recorded before removal.
+          </p>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
+            {deleted.map((d, i) => {
+              const M = PLATFORM_META[d.platform];
+              const m = d.last_metrics || {};
+              return (
+                <div key={`${d.post_id}-${d.platform}-${i}`} data-testid={`deleted-post-${d.post_id}`}
+                  className="border border-white/10 rounded-md p-3 flex items-start gap-3 bg-white/[0.02]">
+                  {M && <M.Icon size={15} style={{ color: M.color }} className="mt-0.5 opacity-50" />}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-medium text-white/70 truncate">{d.title || "Untitled"}</p>
+                      <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-white/5 text-white/45 border border-white/10 shrink-0">
+                        Deleted by user
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/35 mt-1">
+                      {d.name}
+                      {d.deleted_at && ` · noticed ${dayjs(d.deleted_at).format("MMM D, HH:mm")}`}
+                    </p>
+                    {(m.views || m.likes) && (
+                      <p className="text-[11px] text-white/40 mt-1">
+                        last seen: {(m.views || 0).toLocaleString()} views · {(m.likes || 0).toLocaleString()} likes
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

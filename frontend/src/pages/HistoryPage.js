@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 import { toast } from "sonner";
 import { RotateCcw, Trash2, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 
-const FILTERS = ["all", "published", "scheduled", "draft", "failed", "partial"];
+const FILTERS = ["all", "published", "scheduled", "draft", "failed", "partial", "deleted"];
 
 export default function HistoryPage() {
   const [posts, setPosts] = useState([]);
@@ -116,9 +116,21 @@ export default function HistoryPage() {
                             <div className="flex-1 min-w-0 text-[11px]">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-xs">{M?.name || plat}</span>
-                                <span className={r.status === "published" ? "text-emerald-400" : "text-red-400"}>{r.status}</span>
-                                {r.url && <a href={r.url} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white"><ExternalLink size={11} /></a>}
+                                <span className={
+                                  r.status === "published" ? "text-emerald-400"
+                                    : r.status === "deleted" ? "text-white/40"
+                                    : "text-red-400"
+                                }>
+                                  {r.status === "deleted" ? "deleted by user" : r.status}
+                                </span>
+                                {r.url && r.status !== "deleted" && <a href={r.url} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white"><ExternalLink size={11} /></a>}
                               </div>
+                              {r.status === "deleted" && (
+                                <p className="text-white/35 mt-1">
+                                  Removed from {M?.name || plat}
+                                  {r.deleted_at && ` · noticed ${dayjs(r.deleted_at).format("MMM D, HH:mm")}`}
+                                </p>
+                              )}
                               {r.error && <p className="text-red-400/80 mt-1">{r.error}</p>}
                               {r.optimization && (
                                 <p className="text-white/40 mt-1">

@@ -193,6 +193,38 @@ async def publish(token: str, ig_user_id: str, media_url: str, caption: str, is_
     return {"media_id": media_id, "permalink": permalink}
 
 
+async def media_exists(token: str, media_id: str) -> Optional[bool]:
+    """Is this published media still live on Instagram?
+
+    True  = still there
+    False = deleted by the user on Instagram
+    None  = couldn't tell (expired token, rate limit, network) — callers must
+            NOT treat this as a deletion.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(f"{GRAPH}/{API_VERSION}/{media_id}", params={
+                "fields": "id", "access_token": token,
+            })
+    except Exception as e:
+        logger.warning(f"media_exists network error for {media_id}: {e}")
+        return None
+
+    if r.status_code == 200:
+        return True
+    try:
+        err = r.json().get("error", {})
+    except Exception:
+        return None
+    code, subcode = err.get("code"), err.get("error_subcode")
+    # 100/33 and 803 mean the object is gone (or never existed).
+    if code in (100, 803) or subcode == 33:
+        return False
+    # 190 = bad/expired token, 4/17/32 = rate limits — inconclusive.
+    logger.warning(f"media_exists inconclusive for {media_id}: {err}")
+    return None
+
+
 async def get_insights(token: str, media_id: str) -> dict:
     """Best-effort real metrics for a published post."""
     metrics = "views,likes,comments,shares"

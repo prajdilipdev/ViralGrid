@@ -426,6 +426,23 @@ def _simulate_metrics() -> dict:
     }
 
 
+DELETED = "deleted"
+
+
+def _post_status_from_results(results: dict) -> str:
+    """Roll per-platform outcomes up into the post's overall status."""
+    statuses = [r.get("status") for r in results.values()]
+    if not statuses:
+        return "failed"
+    if all(s == "published" for s in statuses):
+        return "published"
+    if any(s == "published" for s in statuses):
+        return "partial"
+    if any(s == DELETED for s in statuses):
+        return DELETED
+    return "failed"
+
+
 def _build_caption(post: dict) -> str:
     parts = [post.get("caption") or post.get("title") or ""]
     if post.get("description"):
@@ -535,15 +552,7 @@ async def _publish_post(post: dict):
             "simulated": True,
             "attempts": results.get(platform, {}).get("attempts", 0) + 1,
         }
-    statuses = [r["status"] for r in results.values()]
-    if not statuses:
-        final = "failed"
-    elif all(s == "published" for s in statuses):
-        final = "published"
-    elif any(s == "published" for s in statuses):
-        final = "partial"
-    else:
-        final = "failed"
+    final = _post_status_from_results(results)
     await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {
         "status": final, "platform_results": results,
         "published_at": datetime.now(timezone.utc).isoformat(),
@@ -694,6 +703,12 @@ async def bulk_create_posts(body: BulkCreateRequest, user: User = Depends(get_cu
     return {"created_count": len(created), "created": created, "errors": errors}
 
 
+@api.post("/posts/sync")
+async def sync_posts(user: User = Depends(get_current_user)):
+    """Check Instagram for posts the user deleted there, and refresh metrics."""
+    return await sync_instagram_posts(user.user_id)
+
+
 @api.post("/posts/{post_id}/publish")
 async def publish_now(post_id: str, user: User = Depends(get_current_user)):
     post = await db.posts.find_one({"post_id": post_id, "user_id": user.user_id}, {"_id": 0})
@@ -730,6 +745,7 @@ async def dashboard_stats(user: User = Depends(get_current_user)):
         "scheduled": sum(1 for p in posts if p["status"] == "scheduled"),
         "drafts": sum(1 for p in posts if p["status"] == "draft"),
         "failed": sum(1 for p in posts if p["status"] == "failed"),
+        "deleted": sum(1 for p in posts if p["status"] == DELETED),
         "connected_platforms": len(conns),
         "total_views": total_views,
     }
@@ -737,13 +753,26 @@ async def dashboard_stats(user: User = Depends(get_current_user)):
 
 @api.get("/analytics/overview")
 async def analytics_overview(user: User = Depends(get_current_user)):
-    posts = await db.posts.find({"user_id": user.user_id, "status": {"$in": ["published", "partial"]}}, {"_id": 0}).to_list(1000)
+    posts = await db.posts.find(
+        {"user_id": user.user_id, "status": {"$in": ["published", "partial", DELETED]}}, {"_id": 0}
+    ).to_list(1000)
     per_platform = {}
     timeline = {}
     totals = {"views": 0, "likes": 0, "comments": 0, "shares": 0}
+    removed = []
     for p in posts:
         day = (p.get("published_at") or p["created_at"])[:10]
         for plat, r in p.get("platform_results", {}).items():
+            if r.get("status") == DELETED:
+                # Keep it visible in analytics, but out of the live totals.
+                removed.append({
+                    "post_id": p["post_id"], "title": p.get("title", ""),
+                    "platform": plat, "name": PLATFORM_SPECS.get(plat, {}).get("name", plat),
+                    "published_at": r.get("published_at"), "deleted_at": r.get("deleted_at"),
+                    "note": r.get("deleted_note") or "Deleted by user",
+                    "last_metrics": r.get("metrics") or {},
+                })
+                continue
             if r.get("status") != "published":
                 continue
             m = r.get("metrics", {})
@@ -755,11 +784,14 @@ async def analytics_overview(user: User = Depends(get_current_user)):
             t = timeline.setdefault(day, {"date": day, "views": 0, "likes": 0})
             t["views"] += m.get("views", 0)
             t["likes"] += m.get("likes", 0)
+    removed.sort(key=lambda x: x.get("deleted_at") or "", reverse=True)
     return {
         "totals": totals,
         "per_platform": sorted(per_platform.values(), key=lambda x: -x["views"]),
         "timeline": sorted(timeline.values(), key=lambda x: x["date"]),
-        "published_posts": len(posts),
+        "published_posts": len(posts) - len(removed),
+        "deleted": removed,
+        "deleted_count": len(removed),
     }
 
 
@@ -792,6 +824,59 @@ async def check_due_posts():
             await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {"status": "failed", "error": str(e)}})
 
 
+async def sync_instagram_posts(user_id: Optional[str] = None) -> dict:
+    """Reconcile our records with Instagram: flag posts the user deleted there,
+    and refresh live metrics for the ones still up."""
+    if not instagram.is_configured():
+        return {"checked": 0, "deleted": 0, "refreshed": 0}
+    q = {f"platform_results.{INSTAGRAM}.status": "published"}
+    if user_id:
+        q["user_id"] = user_id
+    posts = await db.posts.find(q, {"_id": 0}).to_list(500)
+
+    conn_cache: Dict[str, Any] = {}
+    checked = deleted = refreshed = 0
+    for post in posts:
+        result = (post.get("platform_results") or {}).get(INSTAGRAM) or {}
+        media_id = result.get("media_id")
+        if not media_id or result.get("simulated", True):
+            continue
+        uid = post["user_id"]
+        if uid not in conn_cache:
+            conn_cache[uid] = await db.connections.find_one(
+                {"user_id": uid, "platform": INSTAGRAM, "simulated": False}, {"_id": 0}
+            )
+        conn = conn_cache[uid]
+        if not conn:
+            continue
+
+        checked += 1
+        exists = await instagram.media_exists(conn["access_token"], media_id)
+        if exists is None:
+            continue  # inconclusive — leave the record alone
+        if exists is False:
+            result["status"] = DELETED
+            result["deleted_at"] = datetime.now(timezone.utc).isoformat()
+            result["deleted_note"] = "Deleted by user on Instagram"
+            deleted += 1
+        else:
+            metrics = await instagram.get_insights(conn["access_token"], media_id)
+            if not metrics:
+                continue
+            result["metrics"] = {**(result.get("metrics") or {}), **metrics}
+            refreshed += 1
+
+        all_results = {**(post.get("platform_results") or {}), INSTAGRAM: result}
+        await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {
+            f"platform_results.{INSTAGRAM}": result,
+            "status": _post_status_from_results(all_results),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+    if deleted or refreshed:
+        logger.info(f"Instagram sync: checked={checked} deleted={deleted} refreshed={refreshed}")
+    return {"checked": checked, "deleted": deleted, "refreshed": refreshed}
+
+
 async def refresh_instagram_tokens():
     """Long-lived IG tokens last 60 days; refresh any expiring within 10."""
     if not instagram.is_configured():
@@ -822,6 +907,7 @@ async def startup():
         logger.error(f"Object storage init failed: {e}")
     scheduler.add_job(check_due_posts, "interval", seconds=30, id="publish_due")
     scheduler.add_job(refresh_instagram_tokens, "interval", hours=12, id="refresh_ig_tokens")
+    scheduler.add_job(sync_instagram_posts, "interval", hours=6, id="sync_ig_posts")
     scheduler.start()
     if instagram.is_configured():
         logger.info("Instagram publishing: ENABLED (real)")

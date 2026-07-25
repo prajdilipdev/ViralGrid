@@ -18,4 +18,5 @@ export const STATUS_COLORS = {
   published: "text-emerald-400 border-emerald-400/40",
   partial: "text-orange-400 border-orange-400/40",
   failed: "text-red-400 border-red-400/40",
+  deleted: "text-white/40 border-white/20 line-through",
 };
