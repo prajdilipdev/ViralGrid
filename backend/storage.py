@@ -9,6 +9,11 @@ logger = logging.getLogger("storage")
 _storage_key = None
 
 
+def is_configured() -> bool:
+    """Object storage is only available when an Emergent key is present."""
+    return bool(os.environ.get("EMERGENT_LLM_KEY"))
+
+
 async def init_storage():
     global _storage_key
     if _storage_key:

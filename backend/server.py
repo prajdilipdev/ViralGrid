@@ -23,7 +23,7 @@ import aiofiles
 
 from platforms import PLATFORM_SPECS, validate_media_for_platform, build_optimization_plan
 from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video
-from storage import APP_NAME, init_storage, put_object, get_object
+from storage import APP_NAME, init_storage, put_object, get_object, is_configured as storage_configured
 import instagram
 
 mongo_url = os.environ.get('MONGO_URL')
@@ -257,7 +257,13 @@ CATEGORY_DIRS = {"uploads": UPLOAD_DIR, "thumbs": THUMB_DIR, "optimized": OPT_DI
 
 
 async def persist_file(local_path: Path, category: str, filename: str, content_type: str) -> Optional[str]:
-    """Upload a local file to Emergent object storage and record the reference."""
+    """Upload a local file to Emergent object storage and record the reference.
+
+    No-op when object storage isn't configured — reading the file would otherwise
+    pull the whole thing into memory for a call that is guaranteed to fail.
+    """
+    if not storage_configured():
+        return None
     storage_path = f"{APP_NAME}/{category}/{filename}"
     try:
         result = await put_object(storage_path, local_path.read_bytes(), content_type)
