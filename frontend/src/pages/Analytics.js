@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
-import { toast } from "sonner";
+import SyncButton from "../components/SyncButton";
 import dayjs from "dayjs";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from "recharts";
-import { Eye, Heart, MessageCircle, Share2, RefreshCw, Trash2 } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 
 const KPI = ({ label, value, icon: Icon, testid }) => (
   <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
@@ -20,28 +20,12 @@ const tooltipStyle = { backgroundColor: "#111113", border: "1px solid rgba(255,2
 
 export default function Analytics() {
   const [data, setData] = useState(null);
-  const [syncing, setSyncing] = useState(false);
 
   const load = useCallback(
     () => api.get("/analytics/overview").then((r) => setData(r.data)).catch(() => {}),
     [],
   );
   useEffect(() => { load(); }, [load]);
-
-  const sync = async () => {
-    setSyncing(true);
-    try {
-      const r = await api.post("/posts/sync");
-      const { deleted, refreshed, checked } = r.data;
-      if (deleted) toast.success(`${deleted} post${deleted > 1 ? "s" : ""} marked as deleted on Instagram`);
-      else if (refreshed) toast.success(`Refreshed metrics for ${refreshed} post${refreshed > 1 ? "s" : ""}`);
-      else toast.success(checked ? "Everything is up to date" : "No live Instagram posts to check");
-      await load();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Sync failed");
-    }
-    setSyncing(false);
-  };
 
   if (!data) return <div className="p-8 text-white/40 text-sm">Loading analytics…</div>;
 
@@ -54,16 +38,7 @@ export default function Analytics() {
           <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
           <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Outfit" }}>Analytics</h1>
         </div>
-        <button
-          data-testid="analytics-sync-button"
-          onClick={sync}
-          disabled={syncing}
-          title="Check Instagram for deleted posts and refresh metrics"
-          className="h-10 px-4 border border-white/15 rounded-md text-xs font-medium flex items-center gap-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "Syncing…" : "Sync with Instagram"}
-        </button>
+        <SyncButton onDone={load} />
       </div>
       <p className="text-[11px] text-white/40 mb-6 uppercase tracking-widest">Instagram metrics are live · other platforms simulated</p>
 

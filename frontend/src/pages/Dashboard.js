@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { PLATFORM_META, STATUS_COLORS } from "../lib/platforms";
+import SyncButton from "../components/SyncButton";
 import { PenSquare, ArrowUpRight, Clock, FileText, CheckCircle2, Eye, XCircle } from "lucide-react";
 
 const StatCard = ({ label, value, icon: Icon, testid }) => (
@@ -19,11 +20,15 @@ export default function Dashboard() {
   const [posts, setPosts] = useState([]);
   const [conns, setConns] = useState([]);
 
-  useEffect(() => {
-    api.get("/dashboard/stats").then((r) => setStats(r.data)).catch(() => {});
-    api.get("/posts").then((r) => setPosts(r.data.slice(0, 6))).catch(() => {});
-    api.get("/connections").then((r) => setConns(r.data)).catch(() => {});
+  const load = useCallback(async () => {
+    await Promise.all([
+      api.get("/dashboard/stats").then((r) => setStats(r.data)).catch(() => {}),
+      api.get("/posts").then((r) => setPosts(r.data.slice(0, 6))).catch(() => {}),
+      api.get("/connections").then((r) => setConns(r.data)).catch(() => {}),
+    ]);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const connected = new Set(conns.map((c) => c.platform));
   const upcoming = posts.filter((p) => p.status === "scheduled");
@@ -35,9 +40,12 @@ export default function Dashboard() {
           <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Command Center</p>
           <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Outfit" }}>Dashboard</h1>
         </div>
-        <Link to="/composer" data-testid="dashboard-new-post-button" className="bg-white text-black px-5 h-11 rounded-md flex items-center gap-2 text-sm font-medium transition-transform duration-200 hover:-translate-y-0.5">
-          <PenSquare size={15} /> New Post
-        </Link>
+        <div className="flex items-center gap-2">
+          <SyncButton onDone={load} />
+          <Link to="/composer" data-testid="dashboard-new-post-button" className="bg-white text-black px-5 h-11 rounded-md flex items-center gap-2 text-sm font-medium transition-transform duration-200 hover:-translate-y-0.5">
+            <PenSquare size={15} /> New Post
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-t border-l border-white/5">
