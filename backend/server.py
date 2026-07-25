@@ -125,6 +125,13 @@ async def logout(request: Request, response: Response):
     return {"ok": True}
 
 
+@api.get("/health")
+async def health():
+    """Cheap unauthenticated ping — used by the frontend to wake a sleeping
+    free-tier instance and to show a 'server starting' indicator."""
+    return {"ok": True, "instagram": instagram.is_configured()}
+
+
 # ---------- Platform connections (simulated) ----------
 @api.get("/platforms")
 async def list_platforms():

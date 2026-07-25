@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { mediaUrl } from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
+import { useBackendStatus } from "../context/BackendStatus";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -24,6 +25,7 @@ export default function Composer() {
   const [conns, setConns] = useState([]);
   const [media, setMedia] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState([]);
   const [form, setForm] = useState({ title: "", caption: "", description: "", hashtags: "", tags: "" });
   const [overrides, setOverrides] = useState({});
@@ -32,6 +34,7 @@ export default function Composer() {
   const [aiBusy, setAiBusy] = useState(false);
   const [schedule, setSchedule] = useState({ enabled: false, datetime: "", timezone: dayjs.tz.guess() || "UTC", recurrence: "none" });
   const [submitting, setSubmitting] = useState(null);
+  const { ensureAwake } = useBackendStatus();
 
   useEffect(() => { api.get("/connections").then((r) => setConns(r.data)).catch(() => {}); }, []);
   const connected = new Set(conns.map((c) => c.platform));
@@ -46,14 +49,31 @@ export default function Composer() {
   const upload = async (file) => {
     if (!file) return;
     setUploading(true);
+    setProgress(0);
+    // Make sure the server is awake before sending a large file, otherwise the
+    // upload sits there while the instance cold-starts.
+    const awake = await ensureAwake();
+    if (!awake) {
+      toast.error("Server isn't responding yet — please try again in a moment");
+      setUploading(false);
+      return;
+    }
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const r = await api.post("/media/upload", fd);
+      const r = await api.post("/media/upload", fd, {
+        timeout: 0, // large videos can take a while
+        onUploadProgress: (e) => {
+          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
+        },
+      });
       setMedia(r.data);
       toast.success("Media uploaded & analyzed");
-    } catch { toast.error("Upload failed"); }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Upload failed");
+    }
     setUploading(false);
+    setProgress(0);
   };
 
   const togglePlatform = (id) => {
@@ -127,8 +147,22 @@ export default function Composer() {
                 className="w-full border border-dashed border-white/20 rounded-md py-12 flex flex-col items-center gap-3 hover:border-white/40 transition-colors duration-200"
               >
                 {uploading ? <Loader2 size={24} className="animate-spin text-white/60" /> : <UploadCloud size={24} className="text-white/60" />}
-                <span className="text-sm text-white/60">{uploading ? "Uploading & analyzing…" : "Upload video or image"}</span>
-                <span className="text-xs text-white/30">MP4, MOV, WEBM, JPG, PNG</span>
+                <span className="text-sm text-white/60">
+                  {uploading
+                    ? progress > 0 && progress < 100
+                      ? `Uploading… ${progress}%`
+                      : progress >= 100
+                        ? "Processing on server…"
+                        : "Preparing upload…"
+                    : "Upload video or image"}
+                </span>
+                {uploading && progress > 0 ? (
+                  <div className="w-2/3 h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-white/60 transition-[width] duration-200" style={{ width: `${progress}%` }} />
+                  </div>
+                ) : (
+                  <span className="text-xs text-white/30">MP4, MOV, WEBM, JPG, PNG</span>
+                )}
               </button>
             ) : (
               <div className="flex items-start gap-4">

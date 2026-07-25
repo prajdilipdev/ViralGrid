@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { BackendStatusProvider } from "./context/BackendStatus";
 import { Toaster } from "sonner";
 import Layout from "./components/Layout";
+import ServerStatusBar from "./components/ServerStatusBar";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
@@ -47,11 +49,14 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRouter />
-        <Toaster theme="dark" position="bottom-right" richColors />
-      </BrowserRouter>
-    </AuthProvider>
+    <BackendStatusProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRouter />
+          <ServerStatusBar />
+          <Toaster theme="dark" position="bottom-right" richColors />
+        </BrowserRouter>
+      </AuthProvider>
+    </BackendStatusProvider>
   );
 }
