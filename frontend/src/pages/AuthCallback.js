@@ -21,8 +21,11 @@ export default function AuthCallback() {
         setUser(res.data);
         window.history.replaceState(null, "", window.location.pathname);
         navigate("/", { state: { user: res.data }, replace: true });
-      } catch {
-        navigate("/login", { replace: true });
+      } catch (e) {
+        // Surface *why* sign-in failed (e.g. account not on the allowlist)
+        // instead of bouncing back to /login with no explanation.
+        window.history.replaceState(null, "", window.location.pathname);
+        navigate("/login", { replace: true, state: { authError: e.response?.data?.detail || "Sign-in failed. Please try again." } });
       }
     })();
   }, [navigate, setUser]);

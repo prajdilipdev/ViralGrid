@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Zap, CalendarClock, BarChart3, Layers } from "lucide-react";
+import { Zap, CalendarClock, BarChart3, Layers, ShieldAlert } from "lucide-react";
 import { PLATFORM_META } from "../lib/platforms";
 import Logo from "../components/Logo";
 
@@ -9,10 +9,17 @@ import Logo from "../components/Logo";
 export default function Login() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [authError, setAuthError] = useState(location.state?.authError || null);
 
   useEffect(() => {
     if (!loading && user) navigate("/");
   }, [user, loading, navigate]);
+
+  // Clear the error off history so a refresh doesn't resurrect it.
+  useEffect(() => {
+    if (location.state?.authError) navigate(location.pathname, { replace: true, state: {} });
+  }, [location, navigate]);
 
   const handleLogin = () => {
     const redirectUrl = window.location.origin + "/";
@@ -51,6 +58,17 @@ export default function Login() {
       <div className="w-full lg:w-[480px] flex flex-col justify-center px-8 sm:px-14 py-16 bg-[#0A0A0B]">
         <h2 className="text-2xl sm:text-3xl tracking-tight font-medium mb-2" style={{ fontFamily: "Outfit" }}>Sign in</h2>
         <p className="text-white/50 text-sm mb-10">Private workspace — Google account required.</p>
+        {authError && (
+          <div data-testid="auth-error" className="mb-6 border border-amber-400/25 bg-amber-400/[0.07] rounded-md p-4 flex items-start gap-3">
+            <ShieldAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs text-amber-200/90 leading-relaxed">{authError}</p>
+              <button onClick={() => setAuthError(null)} className="text-[11px] text-white/40 hover:text-white mt-2 transition-colors duration-200">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
         <button
           data-testid="google-login-button"
           onClick={handleLogin}
