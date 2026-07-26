@@ -52,6 +52,12 @@ class User(BaseModel):
     picture: Optional[str] = None
 
 
+# Long-lived, sliding sessions: stay signed in as long as the app is used at
+# least once a year. Renewed at most once a day to avoid a write per request.
+SESSION_DAYS = 365
+SESSION_RENEW_AFTER = timedelta(days=1)
+
+
 async def get_current_user(request: Request) -> User:
     token = request.cookies.get("session_token")
     if not token:
@@ -68,8 +74,15 @@ async def get_current_user(request: Request) -> User:
         expires_at = datetime.fromisoformat(expires_at)
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
+    now = datetime.now(timezone.utc)
+    if expires_at < now:
         raise HTTPException(status_code=401, detail="Session expired")
+    # Slide the expiry forward on use so active users are never logged out.
+    full = timedelta(days=SESSION_DAYS)
+    if expires_at - now < full - SESSION_RENEW_AFTER:
+        await db.user_sessions.update_one(
+            {"session_token": token}, {"$set": {"expires_at": (now + full).isoformat()}}
+        )
     user_doc = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
     if not user_doc:
         raise HTTPException(status_code=401, detail="User not found")
@@ -104,10 +117,10 @@ async def create_session(body: SessionRequest, response: Response):
     session_token = data["session_token"]
     await db.user_sessions.insert_one({
         "user_id": user_id, "session_token": session_token,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)).isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    response.set_cookie("session_token", session_token, max_age=7 * 24 * 3600, httponly=True, secure=True, samesite="none", path="/")
+    response.set_cookie("session_token", session_token, max_age=SESSION_DAYS * 24 * 3600, httponly=True, secure=True, samesite="none", path="/")
     # The cookie is cross-site (frontend and backend are different hosts), and
     # Safari/iOS blocks those by default. Also hand the token back so the client
     # can authenticate with an Authorization header, which always works.

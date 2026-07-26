@@ -8,17 +8,26 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
-    try {
-      const res = await api.get("/auth/me");
-      setUser(res.data);
-    } catch (e) {
-      // Drop a token the server has rejected, but keep it through transient
-      // failures (cold starts, network blips) so we don't log the user out.
-      if (e.response?.status === 401) setToken(null);
-      setUser(null);
-    } finally {
-      setLoading(false);
+    // Only a 401 means "really signed out". A cold-starting or unreachable
+    // server must not drop the user at the login screen, so retry first.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await api.get("/auth/me", { timeout: 120000 });
+        setUser(res.data);
+        setLoading(false);
+        return;
+      } catch (e) {
+        if (e.response?.status === 401) {
+          setToken(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      }
     }
+    setUser(null);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
