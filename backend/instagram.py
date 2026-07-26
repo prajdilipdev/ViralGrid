@@ -276,21 +276,66 @@ async def media_exists(token: str, media_id: str) -> Optional[bool]:
     return None
 
 
+def _metric_value(item: dict) -> int:
+    """Pull the number out of an insights item, whichever shape it arrives in."""
+    if isinstance(item.get("value"), (int, float)):
+        return int(item["value"])
+    values = item.get("values")
+    if isinstance(values, list) and values and isinstance(values[0], dict):
+        v = values[0].get("value")
+        if isinstance(v, (int, float)):
+            return int(v)
+    # total_value is used by some metrics
+    tv = item.get("total_value")
+    if isinstance(tv, dict) and isinstance(tv.get("value"), (int, float)):
+        return int(tv["value"])
+    return 0
+
+
 async def get_insights(token: str, media_id: str) -> dict:
-    """Best-effort real metrics for a published post."""
-    metrics = "views,likes,comments,shares"
+    """Real metrics for a published post.
+
+    Instagram reports a metric either as {"value": N} directly on the item or as
+    {"values": [{"value": N}]}, depending on the metric and API version. Reading
+    only one shape silently produces zeros even though the call succeeded, so
+    both are handled here.
+
+    Falls back to the media object's own like/comment counts when the insights
+    edge is unavailable — insights are restricted for some accounts and for
+    media with very few viewers, and those counts always work.
+    """
+    out: dict = {}
     try:
         async with httpx.AsyncClient(timeout=30) as c:
             r = await c.get(f"{GRAPH}/{API_VERSION}/{media_id}/insights", params={
-                "metric": metrics, "access_token": token,
+                "metric": "views,likes,comments,shares", "access_token": token,
             })
-            if r.status_code != 200:
-                return {}
-            out = {}
-            for item in r.json().get("data", []):
-                values = item.get("values") or [{}]
-                out[item["name"]] = values[0].get("value", 0)
-            return out
+            if r.status_code == 200:
+                data = r.json().get("data", [])
+                for item in data:
+                    name = item.get("name")
+                    if name:
+                        out[name] = _metric_value(item)
+                if not out:
+                    logger.warning(f"Insights returned no usable metrics for {media_id}: {r.text[:300]}")
+            else:
+                # Don't fail silently — this is why zeros showed up unexplained.
+                logger.warning(f"Insights unavailable for {media_id}: {_explain(r)}")
+
+            # Like/comment counts live on the media object and are always readable.
+            r2 = await c.get(f"{GRAPH}/{API_VERSION}/{media_id}", params={
+                "fields": "like_count,comments_count", "access_token": token,
+            })
+            if r2.status_code == 200:
+                m = r2.json()
+                if m.get("like_count") is not None:
+                    out.setdefault("likes", m["like_count"])
+                    out["likes"] = max(out.get("likes", 0), m["like_count"])
+                if m.get("comments_count") is not None:
+                    out["comments"] = max(out.get("comments", 0), m["comments_count"])
     except Exception as e:
         logger.warning(f"Insights fetch failed for {media_id}: {e}")
-        return {}
+
+    if out:
+        logger.info(f"IG metrics for {media_id}: {out}")
+    return out
