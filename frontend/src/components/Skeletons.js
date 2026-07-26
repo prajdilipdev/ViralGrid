@@ -6,8 +6,15 @@
  * even arrived.
  */
 
-export const Skeleton = ({ className = "", ...props }) => (
-  <div aria-hidden className={`animate-pulse rounded bg-white/[0.07] ${className}`} {...props} />
+/** `vg-skeleton` (index.css) paints the base fill and the sweeping shimmer. */
+export const Skeleton = ({ className = "", style, delay = 0, ...props }) => (
+  <div
+    aria-hidden
+    className={`vg-skeleton rounded ${className}`}
+    // --vg-delay staggers the sweep so a grid doesn't shimmer in lockstep.
+    style={delay ? { ...style, "--vg-delay": `${delay}ms` } : style}
+    {...props}
+  />
 );
 
 const Shell = ({ children, testid }) => (
@@ -24,10 +31,10 @@ export const StatsSkeleton = ({ count = 6 }) => (
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
           <div className="flex items-center justify-between">
-            <Skeleton className="h-2.5 w-20" />
-            <Skeleton className="h-3.5 w-3.5 rounded-sm" />
+            <Skeleton className="h-2.5 w-20" delay={i * 90} />
+            <Skeleton className="h-3.5 w-3.5 rounded-sm" delay={i * 90} />
           </div>
-          <Skeleton className="mt-4 h-7 w-14" />
+          <Skeleton className="mt-4 h-7 w-14" delay={i * 90} />
         </div>
       ))}
     </div>
@@ -40,13 +47,13 @@ export const ListSkeleton = ({ rows = 4, testid = "skeleton-list" }) => (
     {Array.from({ length: rows }).map((_, i) => (
       <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-white/5 last:border-b-0">
         <div className="flex-1 min-w-0 space-y-2">
-          <Skeleton className={`h-3 ${["w-2/5", "w-1/2", "w-1/3", "w-3/5"][i % 4]}`} />
-          <Skeleton className="h-2.5 w-1/4" />
+          <Skeleton className={`h-3 ${["w-2/5", "w-1/2", "w-1/3", "w-3/5"][i % 4]}`} delay={i * 110} />
+          <Skeleton className="h-2.5 w-1/4" delay={i * 110} />
         </div>
         <div className="hidden sm:flex gap-1.5">
-          {Array.from({ length: 3 }).map((_, j) => <Skeleton key={j} className="h-3.5 w-3.5 rounded-sm" />)}
+          {Array.from({ length: 3 }).map((_, j) => <Skeleton key={j} className="h-3.5 w-3.5 rounded-sm" delay={i * 110} />)}
         </div>
-        <Skeleton className="h-5 w-16 rounded-sm" />
+        <Skeleton className="h-5 w-16 rounded-sm" delay={i * 110} />
       </div>
     ))}
   </Shell>
@@ -59,14 +66,14 @@ export const ConnectionsSkeleton = ({ count = 6 }) => (
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 flex flex-col gap-5">
           <div className="flex items-center gap-4">
-            <Skeleton className="w-12 h-12 rounded-md" />
+            <Skeleton className="w-12 h-12 rounded-md" delay={i * 100} />
             <div className="flex-1 space-y-2">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-2.5 w-16" />
+              <Skeleton className="h-3 w-24" delay={i * 100} />
+              <Skeleton className="h-2.5 w-16" delay={i * 100} />
             </div>
-            <Skeleton className="w-2 h-2 rounded-full" />
+            <Skeleton className="w-2 h-2 rounded-full" delay={i * 100} />
           </div>
-          <Skeleton className="h-10 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md" delay={i * 100} />
         </div>
       ))}
     </div>
@@ -93,7 +100,7 @@ export const AnalyticsSkeleton = () => (
           <Skeleton className="h-3 w-32 mb-6" />
           <div className="h-[260px] flex items-end gap-2">
             {[45, 70, 35, 85, 55, 75, 40, 65, 50, 80].map((h, j) => (
-              <Skeleton key={j} className="flex-1 rounded-t" style={{ height: `${h}%` }} />
+              <Skeleton key={j} className="flex-1 rounded-t" style={{ height: `${h}%` }} delay={j * 80} />
             ))}
           </div>
         </div>
