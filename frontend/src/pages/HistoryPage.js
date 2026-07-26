@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { toast } from "sonner";
 import { RotateCcw, Trash2, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { ListSkeleton } from "../components/Skeletons";
+import { fmt, isValidDate } from "../lib/dates";
 
 const FILTERS = ["all", "published", "scheduled", "draft", "failed", "partial", "deleted"];
 
@@ -77,8 +78,8 @@ export default function HistoryPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{p.title}</p>
                   <p className="text-xs text-white/40">
-                    {dayjs(p.created_at).format("MMM D, YYYY HH:mm")}
-                    {p.status === "scheduled" && p.scheduled_at && ` · fires ${dayjs(p.scheduled_at).format("MMM D, HH:mm")}`}
+                    {fmt(p.created_at)}
+                    {p.status === "scheduled" && isValidDate(p.scheduled_at) && ` · fires ${fmt(p.scheduled_at, "MMM D, HH:mm")}`}
                   </p>
                 </div>
                 <div className="hidden sm:flex gap-1.5">
@@ -133,7 +134,7 @@ export default function HistoryPage() {
                               {r.status === "deleted" && (
                                 <p className="text-white/35 mt-1">
                                   Removed from {M?.name || plat}
-                                  {r.deleted_at && ` · noticed ${dayjs(r.deleted_at).format("MMM D, HH:mm")}`}
+                                  {isValidDate(r.deleted_at) && ` · noticed ${fmt(r.deleted_at, "MMM D, HH:mm")}`}
                                 </p>
                               )}
                               {r.error && <p className="text-red-400/80 mt-1">{r.error}</p>}

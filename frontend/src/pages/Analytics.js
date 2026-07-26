@@ -3,17 +3,18 @@ import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
 import SyncButton from "../components/SyncButton";
 import { AnalyticsSkeleton } from "../components/Skeletons";
-import dayjs from "dayjs";
+import { fmt, isValidDate } from "../lib/dates";
+import { statValue, exactValue } from "../lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from "recharts";
 import { Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 
 const KPI = ({ label, value, icon: Icon, testid }) => (
-  <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
-    <div className="flex items-center justify-between">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">{label}</p>
-      <Icon size={15} className="text-white/30" />
+  <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 min-w-0">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 truncate">{label}</p>
+      <Icon size={15} className="text-white/30 shrink-0" />
     </div>
-    <p className="mt-3 text-3xl font-light tracking-tight" style={{ fontFamily: "Manrope" }}>{value.toLocaleString()}</p>
+    <p className="mt-3 text-3xl font-light tracking-tight truncate" title={exactValue(value)}>{statValue(value)}</p>
   </div>
 );
 
@@ -167,7 +168,7 @@ export default function Analytics() {
                     </div>
                     <p className="text-[11px] text-white/35 mt-1">
                       {d.name}
-                      {d.deleted_at && ` · noticed ${dayjs(d.deleted_at).format("MMM D, HH:mm")}`}
+                      {isValidDate(d.deleted_at) && ` · noticed ${fmt(d.deleted_at, "MMM D, HH:mm")}`}
                     </p>
                     {(m.views || m.likes) && (
                       <p className="text-[11px] text-white/40 mt-1">

@@ -203,10 +203,12 @@ export default function Composer() {
           <div className="border border-white/10 bg-[#0A0A0B] p-6">
             <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">AI Copywriter</p>
             <div className="flex gap-3">
+              {/* min-w-0: an input keeps a default intrinsic width and will not
+                  shrink inside a flex row without it. */}
               <input data-testid="ai-topic-input" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="What is this content about? e.g. '5 morning habits for productivity'"
-                className="flex-1 h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+                className="flex-1 min-w-0 h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
               <button data-testid="ai-generate-button" onClick={generateAI} disabled={aiBusy}
-                className="h-11 px-5 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-50">
+                className="h-11 px-5 shrink-0 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-50">
                 {aiBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Generate
               </button>
             </div>

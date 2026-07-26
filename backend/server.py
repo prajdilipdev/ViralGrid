@@ -40,7 +40,16 @@ db = client[os.environ.get('DB_NAME', 'viralgrid')]
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("crosspost")
 
-app = FastAPI()
+# FastAPI publishes /docs, /redoc and /openapi.json to anyone by default, which
+# hands a stranger the full API surface — every route, parameter and schema.
+# This is a private instance, so keep them off unless deliberately enabled.
+_docs = os.environ.get("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
+app = FastAPI(
+    title="ViralGrid API",
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
+)
 api = APIRouter(prefix="/api")
 
 AUTH_API = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"

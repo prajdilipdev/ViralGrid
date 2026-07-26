@@ -312,10 +312,12 @@ export default function BulkScheduler() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/10 mb-6">
+      {/* Three tabs do not fit a phone width — let the row scroll rather than
+          widening the page. */}
+      <div className="flex gap-1 border-b border-white/10 mb-6 overflow-x-auto">
         {TABS.map(({ id, label, Icon }) => (
           <button key={id} data-testid={`bulk-tab-${id}`} onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-5 py-3 text-xs uppercase tracking-[0.15em] transition-colors duration-200 border-b-2 -mb-px ${
+            className={`flex items-center gap-2 px-5 py-3 text-xs uppercase tracking-[0.15em] whitespace-nowrap shrink-0 transition-colors duration-200 border-b-2 -mb-px ${
               tab === id ? "border-white text-white" : "border-transparent text-white/40 hover:text-white/70"
             }`}>
             <Icon size={13} /> {label}

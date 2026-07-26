@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarSkeleton } from "../components/Skeletons";
+import { fmt, isValidDate } from "../lib/dates";
 
 export default function CalendarPage() {
   const [month, setMonth] = useState(dayjs());
@@ -15,10 +16,12 @@ export default function CalendarPage() {
     api.get("/posts").then((r) => setPosts(r.data)).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const dated = posts.filter((p) => p.scheduled_at || p.published_at);
+  // Ignore records whose date is unusable rather than bucketing them under
+  // an "Invalid Date" key that can never match a calendar cell.
+  const dated = posts.filter((p) => isValidDate(p.scheduled_at) || isValidDate(p.published_at));
   const byDay = {};
   dated.forEach((p) => {
-    const d = dayjs(p.scheduled_at || p.published_at).format("YYYY-MM-DD");
+    const d = fmt(isValidDate(p.scheduled_at) ? p.scheduled_at : p.published_at, "YYYY-MM-DD");
     (byDay[d] = byDay[d] || []).push(p);
   });
 
@@ -92,7 +95,7 @@ export default function CalendarPage() {
                   <Clock size={13} className="text-amber-400 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{p.title}</p>
-                    <p className="text-[10px] text-white/40">{dayjs(p.scheduled_at).format("MMM D, HH:mm")} {p.timezone ? `· ${p.timezone}` : ""}</p>
+                    <p className="text-[10px] text-white/40">{fmt(p.scheduled_at, "MMM D, HH:mm")} {p.timezone ? `· ${p.timezone}` : ""}</p>
                     <div className="flex gap-1.5 mt-1">
                       {p.platforms.map((pl) => {
                         const M = PLATFORM_META[pl];

@@ -3,16 +3,19 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { PLATFORM_META, STATUS_COLORS } from "../lib/platforms";
 import SyncButton from "../components/SyncButton";
+import { fmtLocal } from "../lib/dates";
+import { statValue, exactValue } from "../lib/format";
 import { StatsSkeleton, ListSkeleton } from "../components/Skeletons";
 import { PenSquare, ArrowUpRight, Clock, FileText, CheckCircle2, Eye, XCircle } from "lucide-react";
 
-const StatCard = ({ label, value, icon: Icon, testid }) => (
-  <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
-    <div className="flex items-center justify-between">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">{label}</p>
-      <Icon size={15} className="text-white/30" />
+const StatCard = ({ label, value, exact, icon: Icon, testid }) => (
+  <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 min-w-0">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 truncate">{label}</p>
+      <Icon size={15} className="text-white/30 shrink-0" />
     </div>
-    <p className="mt-3 text-3xl font-light tracking-tight" style={{ fontFamily: "Manrope" }}>{value}</p>
+    {/* truncate: a long figure has no break point and would otherwise widen the grid */}
+    <p className="mt-3 text-3xl font-light tracking-tight truncate" title={exact || undefined}>{value}</p>
   </div>
 );
 
@@ -58,7 +61,7 @@ export default function Dashboard() {
         <StatCard label="Scheduled" value={stats?.scheduled ?? "—"} icon={Clock} testid="stat-scheduled" />
         <StatCard label="Drafts" value={stats?.drafts ?? "—"} icon={PenSquare} testid="stat-drafts" />
         <StatCard label="Failed" value={stats?.failed ?? "—"} icon={XCircle} testid="stat-failed" />
-        <StatCard label="Total Views" value={stats ? stats.total_views.toLocaleString() : "—"} icon={Eye} testid="stat-views" />
+        <StatCard label="Total Views" value={statValue(stats?.total_views)} exact={exactValue(stats?.total_views)} icon={Eye} testid="stat-views" />
       </div>
       )}
 
@@ -127,7 +130,7 @@ export default function Dashboard() {
                     <Clock size={13} className="text-amber-400" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{p.title}</p>
-                      <p className="text-[10px] text-white/40">{p.scheduled_at ? new Date(p.scheduled_at).toLocaleString() : ""}</p>
+                      <p className="text-[10px] text-white/40">{p.scheduled_at ? fmtLocal(p.scheduled_at, "") : ""}</p>
                     </div>
                   </div>
                 ))
