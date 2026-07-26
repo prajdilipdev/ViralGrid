@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import uuid
 import random
 import logging
@@ -575,7 +576,12 @@ async def _publish_post(post: dict):
                 key = (spec["width"], spec["height"], spec["video_bitrate_k"])
                 if key not in transcode_cache:
                     out_name = f"{post['post_id']}_{spec['width']}x{spec['height']}.mp4"
+                    _t0 = time.monotonic()
                     transcode_cache[key] = await transcode_video(str(UPLOAD_DIR / media["filename"]), out_name, spec["width"], spec["height"], spec["video_bitrate_k"])
+                    logger.info(
+                        f"ffmpeg transcode -> {spec['width']}x{spec['height']} "
+                        f"took {time.monotonic() - _t0:.1f}s for {post['post_id']}"
+                    )
                     if transcode_cache[key]:
                         await persist_file(OPT_DIR / transcode_cache[key], "optimized", transcode_cache[key], "video/mp4")
                 optimized_file = transcode_cache[key]

@@ -9,6 +9,7 @@ If IG_APP_ID / IG_APP_SECRET are not configured the module reports itself as
 unconfigured and the caller falls back to simulated publishing.
 """
 import os
+import time
 import asyncio
 import logging
 from typing import Optional
@@ -24,8 +25,10 @@ TOKEN_URL = "https://api.instagram.com/oauth/access_token"
 
 SCOPES = "instagram_business_basic,instagram_business_content_publish"
 
-# Container processing: poll once every few seconds, give up well before the
-# HTTP request would time out. Most short reels finish in 10-60s.
+# Container processing. A fixed 5s interval measured better than an adaptive
+# one (average extra wait 2.05s vs 2.60s), and Meta's guidance is to poll far
+# less often than this, so there is nothing to gain by checking harder — the
+# wait is Instagram's own transcoding, not our polling.
 POLL_INTERVAL_S = 5
 POLL_TIMEOUT_S = 150
 
@@ -175,6 +178,7 @@ async def publish(token: str, ig_user_id: str, media_url: str, caption: str, is_
     Returns {"media_id", "permalink"}. Raises InstagramError with a readable
     message on any failure.
     """
+    started = time.monotonic()
     async with httpx.AsyncClient(timeout=120) as c:
         payload = {"caption": caption[:2200], "access_token": token}
         if is_video:
@@ -188,8 +192,12 @@ async def publish(token: str, ig_user_id: str, media_url: str, caption: str, is_
             raise InstagramError(f"Container creation failed: {_explain(r)}")
         container_id = r.json()["id"]
 
-        # Images are usually ready immediately; videos need transcoding.
-        waited = 0
+        t_container = time.monotonic() - started
+        logger.info(f"IG container {container_id} created in {t_container:.1f}s")
+
+        # Images are usually ready immediately; videos need transcoding on
+        # Instagram's side, which is where most of the wait actually happens.
+        waited = 0.0
         while waited < POLL_TIMEOUT_S:
             r = await c.get(f"{GRAPH}/{API_VERSION}/{container_id}", params={
                 "fields": "status_code,status", "access_token": token,
@@ -209,6 +217,7 @@ async def publish(token: str, ig_user_id: str, media_url: str, caption: str, is_
                 f"Instagram was still processing after {POLL_TIMEOUT_S}s — "
                 "try again, or use a shorter/smaller video"
             )
+        logger.info(f"IG finished processing after {waited:.1f}s of waiting")
 
         r = await c.post(f"{GRAPH}/{API_VERSION}/{ig_user_id}/media_publish", data={
             "creation_id": container_id, "access_token": token,
@@ -227,7 +236,12 @@ async def publish(token: str, ig_user_id: str, media_url: str, caption: str, is_
         except Exception:
             pass
 
-    return {"media_id": media_id, "permalink": permalink}
+    total = time.monotonic() - started
+    logger.info(
+        f"IG publish complete in {total:.1f}s total "
+        f"(container {t_container:.1f}s, processing {waited:.1f}s) media_id={media_id}"
+    )
+    return {"media_id": media_id, "permalink": permalink, "took_seconds": round(total, 1)}
 
 
 async def media_exists(token: str, media_id: str) -> Optional[bool]:
