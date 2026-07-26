@@ -136,6 +136,13 @@ export default function Privacy() {
             You can also revoke this app's access to your Instagram account directly from Instagram,
             under Settings → Apps and websites.
           </p>
+          <p>
+            Step-by-step instructions, and the full list of what gets removed, are on the{" "}
+            <Link to="/data-deletion" className="text-white underline underline-offset-2 hover:text-white/80">
+              data deletion page
+            </Link>
+            .
+          </p>
         </Section>
 
         <Section title="How long things are kept">
@@ -179,7 +186,7 @@ export default function Privacy() {
         </Section>
 
         <div className="mt-14 pt-6 border-t border-white/10 flex items-center justify-between text-xs text-white/40">
-          <span>ViralGrid</span>
+          <Link to="/data-deletion" className="hover:text-white transition-colors duration-200">Data deletion</Link>
           <Link to="/login" className="hover:text-white transition-colors duration-200">Back to sign in</Link>
         </div>
       </main>
