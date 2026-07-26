@@ -90,13 +90,21 @@ export default function Login() {
             </div>
           ))}
         </div>
-        <p className="mt-8 text-xs text-white/35">
+        <p className="mt-8 text-xs text-white/35 leading-relaxed">
+          Private workspace — access is limited to approved accounts, there is no public sign-up.
           By signing in you agree to how your data is handled, described in the{" "}
           <Link to="/privacy" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors duration-200">
             Privacy Policy
           </Link>
           .
         </p>
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/30">
+          {[["/about", "About"], ["/privacy", "Privacy"], ["/data-deletion", "Data deletion"], ["/contact", "Contact"]].map(
+            ([to, label]) => (
+              <Link key={to} to={to} className="hover:text-white/70 transition-colors duration-200">{label}</Link>
+            ),
+          )}
+        </div>
       </div>
     </div>
   );

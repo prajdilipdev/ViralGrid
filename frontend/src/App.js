@@ -15,6 +15,8 @@ import Analytics from "./pages/Analytics";
 import Connections from "./pages/Connections";
 import Privacy from "./pages/Privacy";
 import DataDeletion from "./pages/DataDeletion";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 import "./App.css";
 
 const Protected = ({ children }) => {
@@ -42,6 +44,10 @@ function AppRouter() {
       <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
       <Route path="/data-deletion" element={<DataDeletion />} />
       <Route path="/data-deletion-instructions" element={<Navigate to="/data-deletion" replace />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/about-us" element={<Navigate to="/about" replace />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/contact-us" element={<Navigate to="/contact" replace />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/composer" element={<Protected><Composer /></Protected>} />
       <Route path="/calendar" element={<Protected><CalendarPage /></Protected>} />
