@@ -13,6 +13,7 @@ import BulkScheduler from "./pages/BulkScheduler";
 import HistoryPage from "./pages/HistoryPage";
 import Analytics from "./pages/Analytics";
 import Connections from "./pages/Connections";
+import Privacy from "./pages/Privacy";
 import "./App.css";
 
 const Protected = ({ children }) => {
@@ -35,6 +36,9 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Public — Meta's reviewers must be able to read this without an account */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/composer" element={<Protected><Composer /></Protected>} />
       <Route path="/calendar" element={<Protected><CalendarPage /></Protected>} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Zap, CalendarClock, BarChart3, Layers, ShieldAlert } from "lucide-react";
 import { PLATFORM_META } from "../lib/platforms";
@@ -90,6 +90,13 @@ export default function Login() {
             </div>
           ))}
         </div>
+        <p className="mt-8 text-xs text-white/35">
+          By signing in you agree to how your data is handled, described in the{" "}
+          <Link to="/privacy" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors duration-200">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
