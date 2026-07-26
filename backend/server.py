@@ -108,7 +108,13 @@ async def create_session(body: SessionRequest, response: Response):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     response.set_cookie("session_token", session_token, max_age=7 * 24 * 3600, httponly=True, secure=True, samesite="none", path="/")
-    return {"user_id": user_id, "email": data["email"], "name": data["name"], "picture": data.get("picture")}
+    # The cookie is cross-site (frontend and backend are different hosts), and
+    # Safari/iOS blocks those by default. Also hand the token back so the client
+    # can authenticate with an Authorization header, which always works.
+    return {
+        "user_id": user_id, "email": data["email"], "name": data["name"],
+        "picture": data.get("picture"), "session_token": session_token,
+    }
 
 
 @api.get("/auth/me")

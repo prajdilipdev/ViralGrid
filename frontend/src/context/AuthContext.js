@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import api from "../lib/api";
+import api, { setToken } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -11,7 +11,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.get("/auth/me");
       setUser(res.data);
-    } catch {
+    } catch (e) {
+      // Drop a token the server has rejected, but keep it through transient
+      // failures (cold starts, network blips) so we don't log the user out.
+      if (e.response?.status === 401) setToken(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -30,6 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try { await api.post("/auth/logout"); } catch {}
+    setToken(null);
     setUser(null);
     window.location.href = "/login";
   };

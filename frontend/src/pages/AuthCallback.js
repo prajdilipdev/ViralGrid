@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../lib/api";
+import api, { setToken } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
@@ -18,6 +18,8 @@ export default function AuthCallback() {
     (async () => {
       try {
         const res = await api.post("/auth/session", { session_id: match[1] });
+        // Persist the token so auth survives browsers that block cross-site cookies.
+        if (res.data.session_token) setToken(res.data.session_token);
         setUser(res.data);
         window.history.replaceState(null, "", window.location.pathname);
         navigate("/", { state: { user: res.data }, replace: true });
