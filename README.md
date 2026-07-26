@@ -96,7 +96,7 @@ Redeploy, then open **Connections** — Instagram shows a **Live** badge. Click 
 
 ### How it works / limits
 - Publishing is the standard 3-step flow: create media container → poll until Instagram finishes processing → publish. Instagram **fetches your video from a public URL**, so `PUBLIC_BACKEND_URL` must be reachable and HTTPS.
-- **Free-tier caveat:** if the backend is asleep or has restarted (wiping local uploads), Instagram's fetch fails. For reliable publishing use a paid instance with a persistent disk.
+- **Storage:** the uploads directory is ephemeral (wiped on every restart/redeploy), so each file is also copied into MongoDB and restored on demand — this is what keeps Instagram's fetch working after a redeploy. Files above `MEDIA_DB_MAX_MB` (default 60) are *not* copied and will be lost on restart; for those, use a persistent disk.
 - Reels: 9:16, 5–90s. The app auto-transcodes to 1080x1920 before publishing.
 - Access tokens last 60 days and are auto-refreshed every 12 hours by a background job.
 - Instagram allows **100 API posts per 24 hours**.
@@ -112,6 +112,7 @@ Redeploy, then open **Connections** — Instagram shows a **Live** badge. Click 
 | `ALLOWED_EMAILS` | backend | recommended | Comma-separated Google emails allowed to sign in (unset = anyone) |
 | `IG_APP_ID` / `IG_APP_SECRET` | backend | no | Meta app credentials — enables real Instagram publishing |
 | `PUBLIC_BACKEND_URL` | backend | with Instagram | This backend's own https URL (OAuth redirect + media fetch) |
+| `MEDIA_DB_MAX_MB` | backend | no | Max size kept as a durable MongoDB copy (default 60) |
 | `EMERGENT_LLM_KEY` | backend | no | Enables AI copy generation + Emergent object storage |
 | `REACT_APP_BACKEND_URL` | frontend (build time) | yes | Backend base URL; falls back to same-origin |
 

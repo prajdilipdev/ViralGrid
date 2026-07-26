@@ -25,6 +25,7 @@ from platforms import PLATFORM_SPECS, validate_media_for_platform, build_optimiz
 from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video
 from storage import APP_NAME, init_storage, put_object, get_object, is_configured as storage_configured
 import instagram
+import media_store
 
 mongo_url = os.environ.get('MONGO_URL')
 if not mongo_url:
@@ -285,10 +286,11 @@ CATEGORY_DIRS = {"uploads": UPLOAD_DIR, "thumbs": THUMB_DIR, "optimized": OPT_DI
 async def persist_file(local_path: Path, category: str, filename: str, content_type: str) -> Optional[str]:
     """Upload a local file to Emergent object storage and record the reference.
 
-    No-op when object storage isn't configured — reading the file would otherwise
-    pull the whole thing into memory for a call that is guaranteed to fail.
+    Without Emergent storage, fall back to a durable copy in MongoDB so the
+    file survives the ephemeral uploads directory being wiped on restart.
     """
     if not storage_configured():
+        await media_store.store(db, local_path, filename, content_type)
         return None
     storage_path = f"{APP_NAME}/{category}/{filename}"
     try:
@@ -365,6 +367,17 @@ async def serve_media(filename: str):
             return FileResponse(cache_dir / filename, media_type=record.get("content_type") or content_type)
         except Exception as e:
             logger.error(f"Object storage fetch failed for {filename}: {e}")
+    # …or from the durable MongoDB copy. Optimized renditions are named
+    # "post_<id>_<w>x<h>.mp4"; thumbnails are "media_<id>.jpg".
+    if filename.startswith("post_"):
+        cache_dir = OPT_DIR
+    elif filename.endswith(".jpg"):
+        cache_dir = THUMB_DIR
+    else:
+        cache_dir = UPLOAD_DIR
+    dest = cache_dir / filename
+    if await media_store.restore(db, filename, dest):
+        return FileResponse(dest, media_type=await media_store.content_type(db, filename))
     raise HTTPException(status_code=404, detail="File not found")
 
 
@@ -497,11 +510,12 @@ async def _publish_to_instagram(conn: dict, post: dict, media: Optional[dict],
     on_disk = any((d / filename).is_file() for d in (OPT_DIR, UPLOAD_DIR, THUMB_DIR))
     if not on_disk:
         record = await db.stored_files.find_one({"filename": filename, "is_deleted": False}, {"_id": 0})
-        if not record:
+        durable = record is not None or await media_store.exists(db, filename)
+        if not durable:
             return fail(
                 "The video is no longer stored on the server, so Instagram cannot download it. "
-                "Free-tier storage is wiped whenever the server restarts or redeploys — "
-                "re-upload the video in the Composer and publish again."
+                "This happens when a file larger than the durable-copy limit is lost on a "
+                "restart — re-upload the video in the Composer and publish again."
             )
 
     try:
