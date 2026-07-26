@@ -59,13 +59,50 @@ def authorize_url(state: str) -> str:
 
 
 def _explain(resp: httpx.Response) -> str:
-    """Turn a Meta error response into something readable."""
+    """Turn a Meta error response into something readable *and* diagnosable.
+
+    Meta's human-facing text is often vague ("API access blocked"), so keep the
+    numeric code/subcode too — that is what actually identifies the problem —
+    and log the raw body for anything the message doesn't cover.
+    """
     try:
-        err = resp.json().get("error", {})
-        msg = err.get("error_user_msg") or err.get("message") or resp.text
-        return str(msg)
+        body = resp.json()
     except Exception:
-        return resp.text[:300]
+        logger.error(f"Instagram API {resp.status_code}, non-JSON body: {resp.text[:500]}")
+        return f"HTTP {resp.status_code}: {resp.text[:200]}"
+
+    err = body.get("error", {}) or {}
+    logger.error(f"Instagram API {resp.status_code} error: {body}")
+
+    msg = err.get("error_user_msg") or err.get("message") or str(body)[:200]
+    title = err.get("error_user_title")
+    code, subcode = err.get("code"), err.get("error_subcode")
+
+    parts = [f"{title}: {msg}" if title and title not in str(msg) else str(msg)]
+    ident = ", ".join(
+        f"{k} {v}" for k, v in (("code", code), ("subcode", subcode)) if v is not None
+    )
+    if ident:
+        parts.append(f"[{ident}]")
+    hint = _HINTS.get(code) or _HINTS.get(subcode)
+    if hint:
+        parts.append(f"— {hint}")
+    return " ".join(parts)
+
+
+# Plain-English guidance for the codes that actually come up when publishing.
+_HINTS = {
+    190: "the Instagram access token is invalid or expired — reconnect Instagram",
+    200: "the app lacks permission to publish — check the Instagram Tester role and scopes",
+    10: "permission not granted for this action — the account may need to re-authorise",
+    4: "Instagram rate limit reached — wait and retry",
+    32: "Instagram rate limit reached — wait and retry",
+    9007: "publishing limit reached (100 posts per 24h)",
+    2207052: "Instagram could not download the video from the media URL",
+    2207003: "Instagram could not fetch the media file",
+    2207020: "the media URL was unreachable or timed out",
+    2207026: "unsupported video format — must be MP4/MOV, H.264 + AAC",
+}
 
 
 # ---------- OAuth ----------

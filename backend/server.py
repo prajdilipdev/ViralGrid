@@ -491,6 +491,19 @@ async def _publish_to_instagram(conn: dict, post: dict, media: Optional[dict],
     media_url = f"{base}/api/media/file/{filename}"
     is_video = media.get("type") == "video"
 
+    # Instagram downloads the file from us, so it must actually be on disk.
+    # On hosts with ephemeral storage the uploads directory is wiped by every
+    # restart/redeploy, which otherwise surfaces as a confusing Meta error.
+    on_disk = any((d / filename).is_file() for d in (OPT_DIR, UPLOAD_DIR, THUMB_DIR))
+    if not on_disk:
+        record = await db.stored_files.find_one({"filename": filename, "is_deleted": False}, {"_id": 0})
+        if not record:
+            return fail(
+                "The video is no longer stored on the server, so Instagram cannot download it. "
+                "Free-tier storage is wiped whenever the server restarts or redeploys — "
+                "re-upload the video in the Composer and publish again."
+            )
+
     try:
         result = await instagram.publish(
             conn["access_token"], conn["ig_user_id"], media_url,
