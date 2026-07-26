@@ -3,6 +3,7 @@ import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
 import { toast } from "sonner";
 import { Plug, Unplug } from "lucide-react";
+import { ConnectionsSkeleton } from "../components/Skeletons";
 
 const INSTAGRAM = "instagram_reels";
 
@@ -10,8 +11,10 @@ export default function Connections() {
   const [conns, setConns] = useState([]);
   const [busy, setBusy] = useState(null);
   const [igLive, setIgLive] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const load = () => api.get("/connections").then((r) => setConns(r.data)).catch(() => {});
+  const load = () =>
+    api.get("/connections").then((r) => setConns(r.data)).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => {
     load();
     api.get("/instagram/status").then((r) => setIgLive(r.data.configured)).catch(() => {});
@@ -60,6 +63,7 @@ export default function Connections() {
           : "All connections are simulated. Configure Instagram credentials on the server to publish to Instagram for real."}
       </p>
 
+      {loading ? <ConnectionsSkeleton count={7} /> : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-t border-l border-white/5">
         {Object.entries(PLATFORM_META).map(([id, { name, Icon, color }]) => {
           const conn = connMap[id];
@@ -105,6 +109,7 @@ export default function Connections() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

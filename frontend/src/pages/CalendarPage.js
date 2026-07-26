@@ -4,12 +4,15 @@ import { PLATFORM_META, STATUS_COLORS } from "../lib/platforms";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CalendarSkeleton } from "../components/Skeletons";
 
 export default function CalendarPage() {
   const [month, setMonth] = useState(dayjs());
   const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const load = () => api.get("/posts").then((r) => setPosts(r.data)).catch(() => {});
+  const load = () =>
+    api.get("/posts").then((r) => setPosts(r.data)).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const dated = posts.filter((p) => p.scheduled_at || p.published_at);
@@ -37,6 +40,7 @@ export default function CalendarPage() {
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Planning</p>
       <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Outfit" }}>Content Calendar</h1>
 
+      {loading ? <CalendarSkeleton /> : (
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3 border border-white/10 bg-[#0A0A0B]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
@@ -104,6 +108,7 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { PLATFORM_META, STATUS_COLORS } from "../lib/platforms";
 import dayjs from "dayjs";
 import { toast } from "sonner";
 import { RotateCcw, Trash2, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ListSkeleton } from "../components/Skeletons";
 
 const FILTERS = ["all", "published", "scheduled", "draft", "failed", "partial", "deleted"];
 
@@ -12,8 +13,10 @@ export default function HistoryPage() {
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(null);
   const [busy, setBusy] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = () => api.get("/posts").then((r) => setPosts(r.data)).catch(() => {});
+  const load = () =>
+    api.get("/posts").then((r) => setPosts(r.data)).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const filtered = filter === "all" ? posts : posts.filter((p) => p.status === filter);
@@ -61,7 +64,9 @@ export default function HistoryPage() {
       </div>
 
       <div className="border border-white/10 bg-[#0A0A0B]">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <ListSkeleton rows={6} testid="skeleton-history" />
+        ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
             <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Outfit" }}>No posts here.</p>
           </div>

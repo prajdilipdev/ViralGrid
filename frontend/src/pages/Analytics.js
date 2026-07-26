@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
 import SyncButton from "../components/SyncButton";
+import { AnalyticsSkeleton } from "../components/Skeletons";
 import dayjs from "dayjs";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from "recharts";
 import { Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
@@ -27,7 +28,15 @@ export default function Analytics() {
   );
   useEffect(() => { load(); }, [load]);
 
-  if (!data) return <div className="p-8 text-white/40 text-sm">Loading analytics…</div>;
+  if (!data) {
+    return (
+      <div data-testid="analytics-page" className="p-6 sm:p-8">
+        <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
+        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Outfit" }}>Analytics</h1>
+        <AnalyticsSkeleton />
+      </div>
+    );
+  }
 
   const { totals, per_platform, timeline, deleted = [] } = data;
 

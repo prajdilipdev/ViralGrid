@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { PLATFORM_META, STATUS_COLORS } from "../lib/platforms";
 import SyncButton from "../components/SyncButton";
+import { StatsSkeleton, ListSkeleton } from "../components/Skeletons";
 import { PenSquare, ArrowUpRight, Clock, FileText, CheckCircle2, Eye, XCircle } from "lucide-react";
 
 const StatCard = ({ label, value, icon: Icon, testid }) => (
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [posts, setPosts] = useState([]);
   const [conns, setConns] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     await Promise.all([
@@ -26,6 +28,7 @@ export default function Dashboard() {
       api.get("/posts").then((r) => setPosts(r.data.slice(0, 6))).catch(() => {}),
       api.get("/connections").then((r) => setConns(r.data)).catch(() => {}),
     ]);
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -48,6 +51,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {loading ? <StatsSkeleton /> : (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-t border-l border-white/5">
         <StatCard label="Total Posts" value={stats?.total_posts ?? "—"} icon={FileText} testid="stat-total-posts" />
         <StatCard label="Published" value={stats?.published ?? "—"} icon={CheckCircle2} testid="stat-published" />
@@ -56,6 +60,7 @@ export default function Dashboard() {
         <StatCard label="Failed" value={stats?.failed ?? "—"} icon={XCircle} testid="stat-failed" />
         <StatCard label="Total Views" value={stats ? stats.total_views.toLocaleString() : "—"} icon={Eye} testid="stat-views" />
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         <div className="lg:col-span-2 border border-white/10 bg-[#0A0A0B]">
@@ -65,7 +70,9 @@ export default function Dashboard() {
               View all <ArrowUpRight size={12} />
             </Link>
           </div>
-          {posts.length === 0 ? (
+          {loading ? (
+            <ListSkeleton rows={4} testid="skeleton-recent-posts" />
+          ) : posts.length === 0 ? (
             <div className="p-12 text-center">
               <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Outfit" }}>Nothing published yet.</p>
               <p className="text-sm text-white/40 mt-2">Create your first post to see it here.</p>
