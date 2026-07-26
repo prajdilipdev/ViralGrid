@@ -54,6 +54,9 @@ module.exports = {
           '5': 'hsl(var(--chart-5))'
         }
       },
+      fontFamily: {
+        sans: ['Manrope', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'],
+      },
       keyframes: {
         'accordion-down': {
           from: {

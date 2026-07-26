@@ -36,10 +36,10 @@ export default function Login() {
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-8">
             <Logo size={28} className="text-white" />
-            <span className="text-xl tracking-tight font-semibold" style={{ fontFamily: "Outfit" }}>ViralGrid</span>
+            <span className="text-xl tracking-tight font-semibold" style={{ fontFamily: "Manrope" }}>ViralGrid</span>
           </div>
           <p className="text-xs tracking-[0.3em] uppercase text-white/50 mb-6 font-semibold">Private Publishing Suite</p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-light leading-[1.05]" style={{ fontFamily: "Outfit" }}>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-light leading-[1.05]" style={{ fontFamily: "Manrope" }}>
             One upload.<br />
             <span className="font-semibold">Every platform.</span>
           </h1>
@@ -56,7 +56,7 @@ export default function Login() {
         </div>
       </div>
       <div className="w-full lg:w-[480px] flex flex-col justify-center px-8 sm:px-14 py-16 bg-[#0A0A0B]">
-        <h2 className="text-2xl sm:text-3xl tracking-tight font-medium mb-2" style={{ fontFamily: "Outfit" }}>Sign in</h2>
+        <h2 className="text-2xl sm:text-3xl tracking-tight font-medium mb-2" style={{ fontFamily: "Manrope" }}>Sign in</h2>
         <p className="text-white/50 text-sm mb-10">Private workspace — Google account required.</p>
         {authError && (
           <div data-testid="auth-error" className="mb-6 border border-amber-400/25 bg-amber-400/[0.07] rounded-md p-4 flex items-start gap-3">

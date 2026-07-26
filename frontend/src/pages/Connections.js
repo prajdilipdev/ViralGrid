@@ -56,7 +56,7 @@ export default function Connections() {
   return (
     <div data-testid="connections-page" className="p-6 sm:p-8">
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Integrations</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-3" style={{ fontFamily: "Outfit" }}>Account Connections</h1>
+      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-3" style={{ fontFamily: "Manrope" }}>Account Connections</h1>
       <p className="text-sm text-white/50 mb-8 max-w-2xl">
         {igLive
           ? "Instagram publishes for real via the Instagram Content Publishing API. The remaining platforms are simulated until their developer apps are set up."

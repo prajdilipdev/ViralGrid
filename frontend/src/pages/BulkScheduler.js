@@ -267,7 +267,7 @@ export default function BulkScheduler() {
   return (
     <div data-testid="bulk-scheduler-page" className="p-6 sm:p-8 max-w-7xl">
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Batch</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Outfit" }}>Bulk Scheduler</h1>
+      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Bulk Scheduler</h1>
 
       {/* Shared defaults */}
       <div className="border border-white/10 bg-[#0A0A0B] p-6 mb-6">

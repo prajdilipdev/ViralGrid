@@ -52,7 +52,7 @@ export default function HistoryPage() {
   return (
     <div data-testid="history-page" className="p-6 sm:p-8">
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Archive</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Outfit" }}>Post History</h1>
+      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Post History</h1>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {FILTERS.map((f) => (
@@ -68,7 +68,7 @@ export default function HistoryPage() {
           <ListSkeleton rows={6} testid="skeleton-history" />
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
-            <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Outfit" }}>No posts here.</p>
+            <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Manrope" }}>No posts here.</p>
           </div>
         ) : (
           filtered.map((p) => (

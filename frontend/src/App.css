@@ -1,7 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+/* Manrope is loaded via <link> in public/index.html — a stylesheet @import
+   here would block rendering until it resolves. */
 
 body {
-  font-family: "IBM Plex Sans", sans-serif;
   background-color: #050505;
   color: #ffffff;
 }

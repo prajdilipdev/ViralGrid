@@ -13,7 +13,7 @@ const KPI = ({ label, value, icon: Icon, testid }) => (
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">{label}</p>
       <Icon size={15} className="text-white/30" />
     </div>
-    <p className="mt-3 text-3xl font-light tracking-tight" style={{ fontFamily: "Outfit" }}>{value.toLocaleString()}</p>
+    <p className="mt-3 text-3xl font-light tracking-tight" style={{ fontFamily: "Manrope" }}>{value.toLocaleString()}</p>
   </div>
 );
 
@@ -32,7 +32,7 @@ export default function Analytics() {
     return (
       <div data-testid="analytics-page" className="p-6 sm:p-8">
         <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Outfit" }}>Analytics</h1>
+        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Analytics</h1>
         <AnalyticsSkeleton />
       </div>
     );
@@ -45,7 +45,7 @@ export default function Analytics() {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
           <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Outfit" }}>Analytics</h1>
+          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Manrope" }}>Analytics</h1>
         </div>
         <SyncButton onDone={load} />
       </div>
