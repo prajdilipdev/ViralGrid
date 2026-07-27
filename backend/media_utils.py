@@ -58,6 +58,6 @@ async def transcode_video(src: str, out_name: str, width: int, height: int, bitr
     code, _, err = await _run(
         "ffmpeg", "-y", "-i", src, "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
         "-b:v", f"{bitrate_k}k", "-maxrate", f"{bitrate_k}k", "-bufsize", f"{bitrate_k * 2}k",
-        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(out_path),
+        "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", str(out_path),
     )
     return out_name if code == 0 and out_path.exists() else None
