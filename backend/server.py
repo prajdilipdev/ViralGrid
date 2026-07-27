@@ -4,6 +4,7 @@ import time
 import uuid
 import random
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
@@ -40,11 +41,40 @@ db = client[os.environ.get('DB_NAME', 'viralgrid')]
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("crosspost")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start the publishing scheduler with the app, and stop it cleanly.
+
+    The names referenced here are defined further down the module; that is fine
+    because they are looked up when this runs, not when it is defined.
+    """
+    try:
+        await init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Object storage init failed: {e}")
+
+    scheduler.add_job(check_due_posts, "interval", seconds=30, id="publish_due")
+    scheduler.add_job(refresh_instagram_tokens, "interval", hours=12, id="refresh_ig_tokens")
+    scheduler.add_job(sync_instagram_posts, "interval", hours=6, id="sync_ig_posts")
+    scheduler.start()
+    logger.info(
+        "Instagram publishing: ENABLED (real)" if instagram.is_configured()
+        else "Instagram publishing: simulated (IG_APP_ID/IG_APP_SECRET not set)"
+    )
+
+    yield  # ---- application runs ----
+
+    scheduler.shutdown(wait=False)
+    client.close()
+
+
 # FastAPI publishes /docs, /redoc and /openapi.json to anyone by default, which
 # hands a stranger the full API surface — every route, parameter and schema.
 # This is a private instance, so keep them off unless deliberately enabled.
 _docs = os.environ.get("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 app = FastAPI(
+    lifespan=lifespan,
     title="ViralGrid API",
     docs_url="/docs" if _docs else None,
     redoc_url="/redoc" if _docs else None,
@@ -957,29 +987,6 @@ async def refresh_instagram_tokens():
             logger.info(f"Refreshed Instagram token for {conn['user_id']}")
         except Exception as e:
             logger.error(f"Instagram token refresh failed for {conn['user_id']}: {e}")
-
-
-@app.on_event("startup")
-async def startup():
-    try:
-        await init_storage()
-        logger.info("Object storage initialized")
-    except Exception as e:
-        logger.error(f"Object storage init failed: {e}")
-    scheduler.add_job(check_due_posts, "interval", seconds=30, id="publish_due")
-    scheduler.add_job(refresh_instagram_tokens, "interval", hours=12, id="refresh_ig_tokens")
-    scheduler.add_job(sync_instagram_posts, "interval", hours=6, id="sync_ig_posts")
-    scheduler.start()
-    if instagram.is_configured():
-        logger.info("Instagram publishing: ENABLED (real)")
-    else:
-        logger.info("Instagram publishing: simulated (IG_APP_ID/IG_APP_SECRET not set)")
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    scheduler.shutdown(wait=False)
-    client.close()
 
 
 app.include_router(api)
