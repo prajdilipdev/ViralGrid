@@ -2,15 +2,25 @@ import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { PLATFORM_META, STATUS_COLORS } from "../lib/platforms";
 import dayjs from "dayjs";
-import { ChevronLeft, ChevronRight, Clock, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Trash2, CalendarClock } from "lucide-react";
+import utcPlugin from "dayjs/plugin/utc";
+import tzPlugin from "dayjs/plugin/timezone";
 import { toast } from "sonner";
 import { CalendarSkeleton } from "../components/Skeletons";
 import { fmt, isValidDate } from "../lib/dates";
+
+// Required for dayjs.tz() / .tz() used when rescheduling.
+dayjs.extend(utcPlugin);
+dayjs.extend(tzPlugin);
 
 export default function CalendarPage() {
   const [month, setMonth] = useState(dayjs());
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [newTime, setNewTime] = useState("");
+  const [busy, setBusy] = useState(null);
+  const guessedTz = dayjs.tz.guess() || "UTC";
 
   const load = () =>
     api.get("/posts").then((r) => setPosts(r.data)).catch(() => {}).finally(() => setLoading(false));
@@ -29,6 +39,48 @@ export default function CalendarPage() {
   const firstCell = start.subtract(start.day(), "day");
   const cells = Array.from({ length: 42 }, (_, i) => firstCell.add(i, "day"));
   const queue = posts.filter((p) => p.status === "scheduled").sort((a, b) => (a.scheduled_at || "").localeCompare(b.scheduled_at || ""));
+
+  // Reschedule: edit the time in the post's own timezone, then convert back to
+  // UTC the way the Composer does, so a post keeps firing when the user expects.
+  const startReschedule = (p) => {
+    const tz = p.timezone || guessedTz;
+    setEditing(p.post_id);
+    setNewTime(
+      isValidDate(p.scheduled_at)
+        ? dayjs(p.scheduled_at).tz(tz).format("YYYY-MM-DDTHH:mm")
+        : dayjs().add(1, "hour").format("YYYY-MM-DDTHH:mm"),
+    );
+  };
+
+  const saveReschedule = async (p) => {
+    const tz = p.timezone || guessedTz;
+    // dayjs.tz() throws on some malformed values and silently rolls over on
+    // others ("2026-13-45T99:99" becomes 2027-02-17), so guard against both:
+    // catch the throw, then require the parsed value to format back to exactly
+    // what was entered.
+    let utc;
+    try {
+      utc = dayjs.tz(newTime, tz);
+      if (!utc.isValid() || utc.format("YYYY-MM-DDTHH:mm") !== newTime) throw new Error("invalid");
+    } catch {
+      toast.error("That date and time isn't valid");
+      return;
+    }
+    if (utc.isBefore(dayjs())) {
+      toast.error("Pick a time in the future — a past time would publish immediately");
+      return;
+    }
+    setBusy(p.post_id);
+    try {
+      await api.put(`/posts/${p.post_id}`, { scheduled_at: utc.utc().toISOString(), timezone: tz });
+      toast.success(`Rescheduled to ${utc.format("MMM D, HH:mm")}`);
+      setEditing(null);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not reschedule");
+    }
+    setBusy(null);
+  };
 
   const removeFromQueue = async (postId) => {
     try {
@@ -92,7 +144,7 @@ export default function CalendarPage() {
             ) : (
               queue.map((p) => (
                 <div key={p.post_id} data-testid={`queue-item-${p.post_id}`} className="flex items-start gap-3 px-2 py-3 border-b border-white/5 last:border-b-0">
-                  <Clock size={13} className="text-amber-400 mt-0.5" />
+                  <Clock size={13} className="text-amber-400 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{p.title}</p>
                     <p className="text-[10px] text-white/40">{fmt(p.scheduled_at, "MMM D, HH:mm")} {p.timezone ? `· ${p.timezone}` : ""}</p>
@@ -103,8 +155,50 @@ export default function CalendarPage() {
                       })}
                       {p.recurrence !== "none" && <span className="text-[9px] text-white/40 uppercase">{p.recurrence}</span>}
                     </div>
+
+                    {editing === p.post_id && (
+                      <div className="mt-2 space-y-2">
+                        <input
+                          data-testid={`reschedule-input-${p.post_id}`}
+                          type="datetime-local"
+                          value={newTime}
+                          onChange={(e) => setNewTime(e.target.value)}
+                          className="w-full bg-[#111113] border border-white/15 rounded-md px-2 py-1.5 text-[11px] focus:outline-none focus:border-white/40"
+                        />
+                        <p className="text-[9px] text-white/35">
+                          Times are in {p.timezone || guessedTz}
+                        </p>
+                        <div className="flex gap-1.5">
+                          <button
+                            data-testid={`reschedule-save-${p.post_id}`}
+                            onClick={() => saveReschedule(p)}
+                            disabled={busy === p.post_id || !newTime}
+                            className="flex-1 h-7 bg-white text-black rounded text-[10px] font-medium disabled:opacity-40"
+                          >
+                            {busy === p.post_id ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            onClick={() => setEditing(null)}
+                            className="flex-1 h-7 border border-white/15 text-white/60 rounded text-[10px] hover:text-white"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button data-testid={`queue-remove-${p.post_id}`} onClick={() => removeFromQueue(p.post_id)} className="text-white/30 hover:text-red-400 transition-colors duration-200"><Trash2 size={13} /></button>
+
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <button
+                      data-testid={`queue-reschedule-${p.post_id}`}
+                      title="Change the scheduled time"
+                      onClick={() => startReschedule(p)}
+                      className="text-white/30 hover:text-white transition-colors duration-200"
+                    >
+                      <CalendarClock size={13} />
+                    </button>
+                    <button data-testid={`queue-remove-${p.post_id}`} onClick={() => removeFromQueue(p.post_id)} className="text-white/30 hover:text-red-400 transition-colors duration-200"><Trash2 size={13} /></button>
+                  </div>
                 </div>
               ))
             )}
