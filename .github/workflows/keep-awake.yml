@@ -1,25 +1,33 @@
 name: Keep backend awake
 
 # Render's free tier shuts the backend down after ~15 minutes with no traffic,
-# and a sleeping server cannot run its own scheduler — so a post scheduled for
-# 9am only publishes whenever something next wakes it. This pings the health
-# endpoint on a timer so the server stays up and scheduled posts fire on time.
+# and a sleeping server cannot run its own scheduler — so a post set for 9am
+# only publishes whenever something next wakes it. This pings the health
+# endpoint on a timer.
 #
-# WHY NOT 24/7: the free plan allows 750 instance-hours per month. Running
-# around the clock costs ~744 in a 31-day month, which leaves almost no margin
-# and risks the service being suspended. The window below covers roughly
-# 05:30–00:30 IST (~19h/day, ~600h/month), which is comfortably inside it.
+# BUDGET (this is the part that matters):
+# The free plan allows 750 instance-hours per month. A ping does NOT cost two
+# hours of uptime — it costs about 15 minutes, because the server serves the
+# request and then idles back to sleep long before the next one. So:
 #
-# To change the window, edit the hour range in the cron line (hours are UTC;
-# IST is UTC+5:30). To run it round the clock, use '*/30 * * * *' and keep an
-# eye on your Render usage.
+#   12 pings/day x ~0.25h  =  ~3h/day  =  ~93h/month
+#   750 - 93               =  ~657h/month left over for your own use
+#
+# That is roughly 21 hours a day of personal use before the allowance is at
+# risk, so logging in daily is not a problem. Pinging every 30 minutes instead
+# would keep the server up continuously and cost ~750h/month — the entire
+# allowance, with nothing spare — which is why this runs every 2 hours.
+#
+# TRADE-OFF: the server is asleep between pings, so a scheduled post can go out
+# up to ~2 hours after its time, and the first page load after a gap still
+# takes ~50s to wake. To publish closer to on-time, shorten the interval (and
+# recheck the budget above); to conserve more, lengthen it.
 
 on:
   schedule:
-    - cron: "*/30 0-18 * * *" # every 30 min, 00:00–18:59 UTC
-  workflow_dispatch: # lets you run it by hand from the Actions tab
+    - cron: "0 */2 * * *" # every 2 hours, on the hour (UTC), round the clock
+  workflow_dispatch: # run it by hand from the Actions tab
 
-# Never let two pings overlap.
 concurrency:
   group: keep-awake
   cancel-in-progress: false
