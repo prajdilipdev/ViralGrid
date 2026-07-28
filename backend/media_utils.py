@@ -57,7 +57,12 @@ async def transcode_video(src: str, out_name: str, width: int, height: int, bitr
     vf = f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black"
     code, _, err = await _run(
         "ffmpeg", "-y", "-i", src, "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
+        # x264 otherwise keeps the source's chroma format, so a 4:4:4 or 10-bit
+        # clip produced output Instagram does not accept (it requires 4:2:0) and
+        # which many players cannot decode.
+        "-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.1",
         "-b:v", f"{bitrate_k}k", "-maxrate", f"{bitrate_k}k", "-bufsize", f"{bitrate_k * 2}k",
-        "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", str(out_path),
+        "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
+        "-movflags", "+faststart", str(out_path),
     )
     return out_name if code == 0 and out_path.exists() else None
