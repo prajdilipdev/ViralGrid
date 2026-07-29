@@ -36,7 +36,7 @@ export default function PublicPage({ title, updated, intro, children }) {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-12 pb-16 w-full flex-1">
+      <main className="max-w-3xl mx-auto px-6 py-12 pb-16 w-full flex-1 vg-fade-up">
         <h1 className="text-3xl sm:text-4xl tracking-tighter font-light">{title}</h1>
         {updated && <p className="text-xs text-white/40 mt-3">Last updated {updated}</p>}
         {intro && <p className="mt-8 text-sm leading-relaxed text-white/70">{intro}</p>}

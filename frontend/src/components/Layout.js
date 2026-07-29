@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LayoutDashboard, PenSquare, CalendarDays, Layers, History, BarChart3, Plug, LogOut } from "lucide-react";
 import Logo from "./Logo";
@@ -16,6 +16,7 @@ const NAV = [
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row">
@@ -55,7 +56,10 @@ export default function Layout({ children }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 min-w-0">{children}</main>
+      {/* keyed on the path so the animation replays on every navigation */}
+      <main className="flex-1 min-w-0">
+        <div key={location.pathname} className="vg-fade-up">{children}</div>
+      </main>
     </div>
   );
 }

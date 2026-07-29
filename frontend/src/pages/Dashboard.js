@@ -8,8 +8,12 @@ import { statValue, exactValue } from "../lib/format";
 import { StatsSkeleton, ListSkeleton } from "../components/Skeletons";
 import { PenSquare, ArrowUpRight, Clock, FileText, CheckCircle2, Eye, XCircle } from "lucide-react";
 
-const StatCard = ({ label, value, exact, icon: Icon, testid }) => (
-  <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 min-w-0">
+const StatCard = ({ label, value, exact, icon: Icon, testid, index = 0 }) => (
+  <div
+    data-testid={testid}
+    className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 min-w-0 vg-fade-up"
+    style={{ "--vg-stagger": `${index * 45}ms` }}
+  >
     <div className="flex items-center justify-between gap-2">
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 truncate">{label}</p>
       <Icon size={15} className="text-white/30 shrink-0" />
@@ -56,12 +60,12 @@ export default function Dashboard() {
 
       {loading ? <StatsSkeleton /> : (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-t border-l border-white/5">
-        <StatCard label="Total Posts" value={stats?.total_posts ?? "—"} icon={FileText} testid="stat-total-posts" />
-        <StatCard label="Published" value={stats?.published ?? "—"} icon={CheckCircle2} testid="stat-published" />
-        <StatCard label="Scheduled" value={stats?.scheduled ?? "—"} icon={Clock} testid="stat-scheduled" />
-        <StatCard label="Drafts" value={stats?.drafts ?? "—"} icon={PenSquare} testid="stat-drafts" />
-        <StatCard label="Failed" value={stats?.failed ?? "—"} icon={XCircle} testid="stat-failed" />
-        <StatCard label="Total Views" value={statValue(stats?.total_views)} exact={exactValue(stats?.total_views)} icon={Eye} testid="stat-views" />
+        <StatCard label="Total Posts" value={stats?.total_posts ?? "—"} icon={FileText} testid="stat-total-posts" index={0} />
+        <StatCard label="Published" value={stats?.published ?? "—"} icon={CheckCircle2} testid="stat-published" index={1} />
+        <StatCard label="Scheduled" value={stats?.scheduled ?? "—"} icon={Clock} testid="stat-scheduled" index={2} />
+        <StatCard label="Drafts" value={stats?.drafts ?? "—"} icon={PenSquare} testid="stat-drafts" index={3} />
+        <StatCard label="Failed" value={stats?.failed ?? "—"} icon={XCircle} testid="stat-failed" index={4} />
+        <StatCard label="Total Views" value={statValue(stats?.total_views)} exact={exactValue(stats?.total_views)} icon={Eye} testid="stat-views" index={5} />
       </div>
       )}
 

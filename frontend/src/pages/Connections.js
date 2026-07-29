@@ -65,10 +65,12 @@ export default function Connections() {
 
       {loading ? <ConnectionsSkeleton count={7} /> : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-t border-l border-white/5">
-        {Object.entries(PLATFORM_META).map(([id, { name, Icon, color }]) => {
+        {Object.entries(PLATFORM_META).map(([id, { name, Icon, color }], i) => {
           const conn = connMap[id];
           return (
-            <div key={id} data-testid={`connection-card-${id}`} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 flex flex-col gap-5">
+            <div key={id} data-testid={`connection-card-${id}`}
+              className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 flex flex-col gap-5 vg-fade-up"
+              style={{ "--vg-stagger": `${i * 40}ms` }}>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-md border border-white/10 bg-white/5 flex items-center justify-center">
                   <Icon size={22} style={{ color }} />

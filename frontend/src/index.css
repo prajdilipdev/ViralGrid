@@ -42,6 +42,34 @@
     }
 }
 
+/* Fade + slide-up. Used on page content when a route changes, and on cards in
+   a grid so they arrive as a short cascade rather than all at once. Only
+   opacity and transform animate, so it stays on the compositor. */
+@keyframes vg-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.vg-fade-up {
+    animation: vg-fade-up 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+    /* Set --vg-stagger on an item to offset it within a group. */
+    animation-delay: var(--vg-stagger, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vg-fade-up {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
 body {
     margin: 0;
     font-family:
