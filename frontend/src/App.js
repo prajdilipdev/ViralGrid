@@ -4,6 +4,7 @@ import { BackendStatusProvider } from "./context/BackendStatus";
 import { Toaster } from "sonner";
 import Layout from "./components/Layout";
 import ServerStatusBar from "./components/ServerStatusBar";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
@@ -65,7 +66,10 @@ export default function App() {
     <BackendStatusProvider>
       <AuthProvider>
         <BrowserRouter>
-          <AppRouter />
+          {/* A render error in one page must not take the whole app down. */}
+          <ErrorBoundary>
+            <AppRouter />
+          </ErrorBoundary>
           <ServerStatusBar />
           <Toaster theme="dark" position="bottom-right" richColors />
         </BrowserRouter>

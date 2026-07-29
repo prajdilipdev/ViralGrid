@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { RotateCcw, Trash2, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { ListSkeleton } from "../components/Skeletons";
 import { fmt, isValidDate } from "../lib/dates";
+import { count } from "../lib/format";
 
 const FILTERS = ["all", "published", "scheduled", "draft", "failed", "partial", "deleted"];
 
@@ -144,7 +145,7 @@ export default function HistoryPage() {
                                 </p>
                               )}
                               {r.metrics && (
-                                <p className="text-white/50 mt-1">{r.metrics.views.toLocaleString()} views · {r.metrics.likes.toLocaleString()} likes · {r.metrics.shares.toLocaleString()} shares</p>
+                                <p className="text-white/50 mt-1">{count(r.metrics.views)} views · {count(r.metrics.likes)} likes · {count(r.metrics.shares)} shares</p>
                               )}
                             </div>
                           </div>

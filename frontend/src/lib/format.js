@@ -19,6 +19,14 @@ export const statValue = (n) => {
   return Math.abs(v) >= 100000 ? compact.format(v) : v.toLocaleString();
 };
 
+/**
+ * Inline count, e.g. "207 views". Missing or non-numeric reads as 0.
+ *
+ * Instagram only returns the metrics it chooses to — a post can come back with
+ * views and likes but no shares — so fields must never be assumed present.
+ */
+export const count = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString();
+
 /** Exact form, for the title attribute. */
 export const exactValue = (n) =>
   n === null || n === undefined || Number.isNaN(Number(n)) ? "" : Number(n).toLocaleString();

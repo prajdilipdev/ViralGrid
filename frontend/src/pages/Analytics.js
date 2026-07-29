@@ -4,7 +4,7 @@ import { PLATFORM_META } from "../lib/platforms";
 import SyncButton from "../components/SyncButton";
 import { AnalyticsSkeleton } from "../components/Skeletons";
 import { fmt, isValidDate } from "../lib/dates";
-import { statValue, exactValue } from "../lib/format";
+import { statValue, exactValue, count } from "../lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from "recharts";
 import { Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 
@@ -125,10 +125,10 @@ export default function Analytics() {
                     <tr key={p.platform} data-testid={`analytics-row-${p.platform}`} className="border-t border-white/5">
                       <td className="px-6 py-3 flex items-center gap-2">{M && <M.Icon size={14} style={{ color: M.color }} />} {p.name}</td>
                       <td className="text-right px-6 py-3 text-white/70">{p.posts}</td>
-                      <td className="text-right px-6 py-3 text-white/70">{p.views.toLocaleString()}</td>
-                      <td className="text-right px-6 py-3 text-white/70">{p.likes.toLocaleString()}</td>
-                      <td className="text-right px-6 py-3 text-white/70">{p.comments.toLocaleString()}</td>
-                      <td className="text-right px-6 py-3 text-white/70">{p.shares.toLocaleString()}</td>
+                      <td className="text-right px-6 py-3 text-white/70">{count(p.views)}</td>
+                      <td className="text-right px-6 py-3 text-white/70">{count(p.likes)}</td>
+                      <td className="text-right px-6 py-3 text-white/70">{count(p.comments)}</td>
+                      <td className="text-right px-6 py-3 text-white/70">{count(p.shares)}</td>
                     </tr>
                   );
                 })}
@@ -172,7 +172,7 @@ export default function Analytics() {
                     </p>
                     {(m.views || m.likes) && (
                       <p className="text-[11px] text-white/40 mt-1">
-                        last seen: {(m.views || 0).toLocaleString()} views · {(m.likes || 0).toLocaleString()} likes
+                        last seen: {count(m.views)} views · {count(m.likes)} likes
                       </p>
                     )}
                   </div>
