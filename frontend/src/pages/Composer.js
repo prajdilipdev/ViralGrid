@@ -241,28 +241,47 @@ export default function Composer() {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-3">
-            <button data-testid="save-draft-button" onClick={() => submit("draft")} disabled={!!submitting}
-              className="h-12 px-6 border border-white/20 text-white/80 rounded-md text-sm font-medium flex items-center gap-2 hover:bg-white/5 transition-colors duration-200 disabled:opacity-50">
-              {submitting === "draft" ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save Draft
-            </button>
-            {schedule.enabled ? (
-              <button data-testid="schedule-post-button" onClick={() => submit("schedule")} disabled={!!submitting}
-                className="h-12 px-6 bg-amber-400 text-black rounded-md text-sm font-medium flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-50">
-                {submitting === "schedule" ? <Loader2 size={15} className="animate-spin" /> : <CalendarClock size={15} />} Schedule Post
-              </button>
-            ) : (
-              <button data-testid="publish-now-button" onClick={() => submit("publish")} disabled={!!submitting}
-                className="h-12 px-6 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50">
-                {submitting === "publish" ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Publish Now
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Right column */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Actions — kept in the sidebar and pinned, so publishing is always
+              one click away instead of a scroll to the bottom of the form. */}
+          <div className="border border-white/10 bg-[#0A0A0B] p-5 lg:sticky lg:top-6 z-10">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">Publish</p>
+              <span className="text-[10px] text-white/35">
+                {selected.length === 0
+                  ? "no platform selected"
+                  : `${selected.length} platform${selected.length > 1 ? "s" : ""}`}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {schedule.enabled ? (
+                <button data-testid="schedule-post-button" onClick={() => submit("schedule")} disabled={!!submitting}
+                  className="w-full h-12 px-5 bg-amber-400 text-black rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0">
+                  {submitting === "schedule" ? <Loader2 size={15} className="animate-spin" /> : <CalendarClock size={15} />} Schedule Post
+                </button>
+              ) : (
+                <button data-testid="publish-now-button" onClick={() => submit("publish")} disabled={!!submitting}
+                  className="w-full h-12 px-5 bg-white text-black rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0">
+                  {submitting === "publish" ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Publish Now
+                </button>
+              )}
+
+              <button data-testid="save-draft-button" onClick={() => submit("draft")} disabled={!!submitting}
+                className="w-full h-11 px-5 border border-white/20 text-white/80 rounded-md text-sm font-medium flex items-center justify-center gap-2 hover:bg-white/5 transition-colors duration-200 disabled:opacity-50">
+                {submitting === "draft" ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Save Draft
+              </button>
+            </div>
+
+            {schedule.enabled && schedule.datetime && (
+              <p className="text-[10px] text-white/35 mt-3 leading-relaxed">
+                Goes out {dayjs(schedule.datetime).format("MMM D, HH:mm")} · {schedule.timezone}
+              </p>
+            )}
+          </div>
           <div className="border border-white/10 bg-[#0A0A0B] p-6">
             <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Platforms</p>
             <div className="space-y-1">
