@@ -43,6 +43,14 @@ PLATFORM_SPECS = {
 }
 
 
+# Instagram (and the other platforms here) accept H.264 or HEVC video with AAC
+# audio. Anything else — VP9, AV1, MPEG-4 ASP, Opus, MP3, AC3 — either fails
+# on their end or gets processed unpredictably, so it must be converted rather
+# than sent through untouched. ffprobe reports HEVC as "hevc".
+ACCEPTED_VIDEO_CODECS = {"h264", "hevc"}
+ACCEPTED_AUDIO_CODECS = {"aac"}
+
+
 def validate_media_for_platform(media: dict, platform: str) -> dict:
     spec = PLATFORM_SPECS[platform]
     checks = []
@@ -53,6 +61,16 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
             checks.append({"level": "error", "message": f"Duration {int(dur)}s exceeds {spec['max_duration']}s limit"})
         else:
             checks.append({"level": "ok", "message": f"Duration {int(dur)}s within {spec['max_duration']}s limit"})
+
+        vcodec = (media.get("codec") or "").lower()
+        if vcodec and vcodec not in ACCEPTED_VIDEO_CODECS:
+            checks.append({"level": "warn", "message": f"Video codec '{vcodec}' isn't accepted — will be converted to H.264"})
+            needs_transform = True
+
+        acodec = (media.get("audio_codec") or "").lower()
+        if acodec and acodec not in ACCEPTED_AUDIO_CODECS:
+            checks.append({"level": "warn", "message": f"Audio codec '{acodec}' isn't accepted — will be converted to AAC"})
+            needs_transform = True
     size_mb = round((media.get("size") or 0) / (1024 * 1024), 1)
     if size_mb > spec["max_size_mb"]:
         checks.append({"level": "warn", "message": f"File {size_mb}MB exceeds {spec['max_size_mb']}MB — will be compressed"})
