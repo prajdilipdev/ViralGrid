@@ -1,6 +1,9 @@
 import asyncio
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger("media_utils")
 
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 THUMB_DIR = UPLOAD_DIR / "thumbs"
@@ -50,19 +53,54 @@ async def generate_thumbnail(video_path: str, out_name: str) -> str | None:
     return out_name if code == 0 and out_path.exists() else None
 
 
+async def is_hdr(path: str) -> bool:
+    """Is this HDR / >8-bit? Those need tone mapping, not a bare bit-depth cut."""
+    code, out, _ = await _run(
+        "ffprobe", "-v", "quiet", "-select_streams", "v:0", "-print_format", "json",
+        "-show_entries", "stream=pix_fmt,color_transfer,color_primaries", path,
+    )
+    if code != 0:
+        return False
+    try:
+        s = (json.loads(out or "{}").get("streams") or [{}])[0]
+    except Exception:
+        return False
+    deep = "10le" in (s.get("pix_fmt") or "") or "12le" in (s.get("pix_fmt") or "")
+    hdr_trc = (s.get("color_transfer") or "") in ("smpte2084", "arib-std-b67")
+    wide = (s.get("color_primaries") or "") == "bt2020"
+    return deep or hdr_trc or wide
+
+
 async def transcode_video(src: str, out_name: str, width: int, height: int, bitrate_k: int) -> str | None:
     out_path = OPT_DIR / out_name
     if out_path.exists():
         return out_name
-    vf = f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black"
-    code, _, err = await _run(
-        "ffmpeg", "-y", "-i", src, "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
-        # x264 otherwise keeps the source's chroma format, so a 4:4:4 or 10-bit
-        # clip produced output Instagram does not accept (it requires 4:2:0) and
-        # which many players cannot decode.
-        "-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.1",
-        "-b:v", f"{bitrate_k}k", "-maxrate", f"{bitrate_k}k", "-bufsize", f"{bitrate_k * 2}k",
-        "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
-        "-movflags", "+faststart", str(out_path),
-    )
-    return out_name if code == 0 and out_path.exists() else None
+
+    fit = f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black"
+
+    # Instagram requires 8-bit 4:2:0, and x264 would otherwise keep the source's
+    # format. Phones record HDR 10-bit by default, and simply truncating that to
+    # 8 bits looks washed out — so tone map when the source is HDR. zscale is not
+    # present in every ffmpeg build, hence the plain fallback below.
+    chains = [fit]
+    if await is_hdr(src):
+        tonemapped = (
+            f"{fit},zscale=t=linear:npl=100,tonemap=tonemap=hable:desat=0,"
+            "zscale=p=bt709:t=bt709:m=bt709:r=tv,format=yuv420p"
+        )
+        chains.insert(0, tonemapped)
+
+    for attempt, vf in enumerate(chains):
+        code, _, err = await _run(
+            "ffmpeg", "-y", "-i", src, "-vf", vf, "-c:v", "libx264", "-preset", "veryfast",
+            "-pix_fmt", "yuv420p", "-profile:v", "high", "-level", "4.1",
+            "-b:v", f"{bitrate_k}k", "-maxrate", f"{bitrate_k}k", "-bufsize", f"{bitrate_k * 2}k",
+            "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
+            "-movflags", "+faststart", str(out_path),
+        )
+        if code == 0 and out_path.exists():
+            return out_name
+        if attempt < len(chains) - 1:
+            logger.warning(f"Tone-mapped encode unavailable, retrying without it: {err.strip()[-200:]}")
+            out_path.unlink(missing_ok=True)
+    return None

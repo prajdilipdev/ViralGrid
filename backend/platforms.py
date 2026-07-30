@@ -6,7 +6,10 @@ PLATFORM_SPECS = {
     },
     "instagram_reels": {
         "name": "Instagram Reels", "aspect": "9:16", "width": 1080, "height": 1920,
-        "max_duration": 90, "max_size_mb": 250, "caption_limit": 2200, "hashtag_limit": 30,
+        # Instagram accepts up to 1GB for Reels. The old 250MB figure forced a
+        # re-encode of large, already-correct videos, throwing away quality
+        # Instagram never asked us to discard.
+        "max_duration": 90, "max_size_mb": 1000, "caption_limit": 2200, "hashtag_limit": 30,
         # 12000 rather than 8000: measured SSIM 0.9988 vs 0.9969 against the
         # source, for no extra encode time. Instagram re-compresses anyway, so
         # the aim is to hand it the cleanest input we can.
