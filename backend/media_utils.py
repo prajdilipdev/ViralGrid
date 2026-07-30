@@ -71,6 +71,31 @@ async def is_hdr(path: str) -> bool:
     return deep or hdr_trc or wide
 
 
+async def remux_faststart(src: str, out_name: str) -> str | None:
+    """Move the moov atom to the front of the file without touching a single
+    video or audio sample — a container-level repack, not a re-encode.
+
+    Meta's own spec requires the moov atom at the front ("no edit lists and
+    moov atom at the front of the file"). A phone or editing tool that writes
+    it at the end still produces a file that plays fine locally, but a
+    passthrough upload sent it to Instagram exactly as recorded — silently out
+    of spec. -c copy guarantees the video/audio streams are copied bit-for-bit;
+    only the container's index is rewritten.
+    """
+    out_path = OPT_DIR / out_name
+    if out_path.exists():
+        return out_name
+    code, _, err = await _run(
+        "ffmpeg", "-y", "-i", src,
+        "-map", "0:v:0", "-map", "0:a:0?",
+        "-c", "copy", "-movflags", "+faststart", str(out_path),
+    )
+    if code != 0 or not out_path.exists():
+        logger.warning(f"Faststart remux failed, will send the original file as-is: {err.strip()[-200:]}")
+        return None
+    return out_name
+
+
 async def transcode_video(src: str, out_name: str, width: int, height: int, bitrate_k: int) -> str | None:
     out_path = OPT_DIR / out_name
     if out_path.exists():

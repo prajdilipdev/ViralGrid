@@ -24,7 +24,7 @@ import httpx
 import aiofiles
 
 from platforms import PLATFORM_SPECS, validate_media_for_platform, build_optimization_plan
-from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video
+from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video, remux_faststart
 from storage import APP_NAME, init_storage, put_object, get_object, is_configured as storage_configured
 import instagram
 import media_store
@@ -600,6 +600,7 @@ async def _publish_post(post: dict):
         )
     results = post.get("platform_results", {})
     transcode_cache = {}
+    remux_cache = {}
     for platform in post.get("platforms", []):
         if platform not in PLATFORM_SPECS:
             continue
@@ -630,6 +631,19 @@ async def _publish_post(post: dict):
                 optimized_file = transcode_cache[key]
                 if not optimized_file:
                     optimization["transform"] = "passthrough_fallback"
+            elif media["type"] == "video":
+                # Passthrough still means "don't re-encode" — but Meta's spec
+                # requires the moov atom at the front, and a phone/editor that
+                # writes it at the end would otherwise have that sent as-is.
+                # This is a lossless stream copy, not a transcode: quality,
+                # bitrate and every sample are untouched.
+                filename = media["filename"]
+                if filename not in remux_cache:
+                    out_name = f"faststart_{Path(filename).stem}.mp4"
+                    remux_cache[filename] = await remux_faststart(str(UPLOAD_DIR / filename), out_name)
+                    if remux_cache[filename]:
+                        await persist_file(OPT_DIR / remux_cache[filename], "optimized", remux_cache[filename], "video/mp4")
+                optimized_file = remux_cache[filename]
         attempts = results.get(platform, {}).get("attempts", 0) + 1
         conn = conn_map.get(platform, {})
         if platform == INSTAGRAM and not conn.get("simulated", True):
