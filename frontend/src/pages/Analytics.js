@@ -3,6 +3,7 @@ import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
 import SyncButton from "../components/SyncButton";
 import { AnalyticsSkeleton } from "../components/Skeletons";
+import ErrorState from "../components/ErrorState";
 import { fmt, isValidDate } from "../lib/dates";
 import { statValue, exactValue, count } from "../lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from "recharts";
@@ -22,12 +23,28 @@ const tooltipStyle = { backgroundColor: "#111113", border: "1px solid rgba(255,2
 
 export default function Analytics() {
   const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
-  const load = useCallback(
-    () => api.get("/analytics/overview").then((r) => setData(r.data)).catch(() => {}),
-    [],
-  );
+  const load = useCallback(() => {
+    setError(null);
+    return api
+      .get("/analytics/overview")
+      .then((r) => setData(r.data))
+      .catch((e) => setError(e));
+  }, []);
   useEffect(() => { load(); }, [load]);
+
+  if (error && !data) {
+    return (
+      <div data-testid="analytics-page" className="p-6 sm:p-8">
+        <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
+        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8">Analytics</h1>
+        <div className="border border-white/10 bg-[#0A0A0B]">
+          <ErrorState what="your analytics" error={error} onRetry={load} />
+        </div>
+      </div>
+    );
+  }
 
   if (!data) {
     return (

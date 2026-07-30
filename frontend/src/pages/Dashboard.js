@@ -6,6 +6,7 @@ import SyncButton from "../components/SyncButton";
 import { fmtLocal } from "../lib/dates";
 import { statValue, exactValue } from "../lib/format";
 import { StatsSkeleton, ListSkeleton } from "../components/Skeletons";
+import ErrorState from "../components/ErrorState";
 import { PenSquare, ArrowUpRight, Clock, FileText, CheckCircle2, Eye, XCircle } from "lucide-react";
 
 const StatCard = ({ label, value, exact, icon: Icon, testid, index = 0 }) => (
@@ -28,13 +29,20 @@ export default function Dashboard() {
   const [posts, setPosts] = useState([]);
   const [conns, setConns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
+    setError(null);
+    // Remember the first failure rather than discarding it — otherwise a failed
+    // load is indistinguishable from an account with no posts.
+    let failure = null;
+    const track = (p) => p.catch((e) => { failure = failure || e; });
     await Promise.all([
-      api.get("/dashboard/stats").then((r) => setStats(r.data)).catch(() => {}),
-      api.get("/posts").then((r) => setPosts(r.data.slice(0, 6))).catch(() => {}),
-      api.get("/connections").then((r) => setConns(r.data)).catch(() => {}),
+      track(api.get("/dashboard/stats").then((r) => setStats(r.data))),
+      track(api.get("/posts").then((r) => setPosts(r.data.slice(0, 6)))),
+      track(api.get("/connections").then((r) => setConns(r.data))),
     ]);
+    setError(failure);
     setLoading(false);
   }, []);
 
@@ -79,6 +87,8 @@ export default function Dashboard() {
           </div>
           {loading ? (
             <ListSkeleton rows={4} testid="skeleton-recent-posts" />
+          ) : error ? (
+            <ErrorState what="your dashboard" error={error} onRetry={load} />
           ) : posts.length === 0 ? (
             <div className="p-12 text-center">
               <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Manrope" }}>Nothing published yet.</p>

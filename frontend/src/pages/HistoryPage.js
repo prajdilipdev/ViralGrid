@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import { toast } from "sonner";
 import { RotateCcw, Trash2, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { ListSkeleton } from "../components/Skeletons";
+import ErrorState from "../components/ErrorState";
 import { fmt, isValidDate } from "../lib/dates";
 import { count } from "../lib/format";
 
@@ -16,9 +17,16 @@ export default function HistoryPage() {
   const [expanded, setExpanded] = useState(null);
   const [busy, setBusy] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const load = () =>
-    api.get("/posts").then((r) => setPosts(r.data)).catch(() => {}).finally(() => setLoading(false));
+  const load = () => {
+    setError(null);
+    return api
+      .get("/posts")
+      .then((r) => setPosts(r.data))
+      .catch((e) => setError(e))
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); }, []);
 
   const filtered = filter === "all" ? posts : posts.filter((p) => p.status === filter);
@@ -68,6 +76,8 @@ export default function HistoryPage() {
       <div className="border border-white/10 bg-[#0A0A0B]">
         {loading ? (
           <ListSkeleton rows={6} testid="skeleton-history" />
+        ) : error ? (
+          <ErrorState what="your posts" error={error} onRetry={load} />
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
             <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Manrope" }}>No posts here.</p>

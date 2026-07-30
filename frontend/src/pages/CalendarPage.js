@@ -7,6 +7,7 @@ import utcPlugin from "dayjs/plugin/utc";
 import tzPlugin from "dayjs/plugin/timezone";
 import { toast } from "sonner";
 import { CalendarSkeleton } from "../components/Skeletons";
+import ErrorState from "../components/ErrorState";
 import { fmt, isValidDate } from "../lib/dates";
 
 // Required for dayjs.tz() / .tz() used when rescheduling.
@@ -17,13 +18,20 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(dayjs());
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
   const [newTime, setNewTime] = useState("");
   const [busy, setBusy] = useState(null);
   const guessedTz = dayjs.tz.guess() || "UTC";
 
-  const load = () =>
-    api.get("/posts").then((r) => setPosts(r.data)).catch(() => {}).finally(() => setLoading(false));
+  const load = () => {
+    setError(null);
+    return api
+      .get("/posts")
+      .then((r) => setPosts(r.data))
+      .catch((e) => setError(e))
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); }, []);
 
   // Ignore records whose date is unusable rather than bucketing them under
@@ -95,7 +103,11 @@ export default function CalendarPage() {
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Planning</p>
       <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Content Calendar</h1>
 
-      {loading ? <CalendarSkeleton /> : (
+      {loading ? <CalendarSkeleton /> : error ? (
+        <div className="border border-white/10 bg-[#0A0A0B]">
+          <ErrorState what="your calendar" error={error} onRetry={load} />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3 border border-white/10 bg-[#0A0A0B]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
