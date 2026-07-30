@@ -50,7 +50,7 @@ export default function Analytics() {
     return (
       <div data-testid="analytics-page" className="p-6 sm:p-8">
         <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Analytics</h1>
+        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Analytics</h1>
         <AnalyticsSkeleton />
       </div>
     );
@@ -63,7 +63,7 @@ export default function Analytics() {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
           <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Manrope" }}>Analytics</h1>
+          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Space Grotesk" }}>Analytics</h1>
         </div>
         <SyncButton onDone={load} />
       </div>

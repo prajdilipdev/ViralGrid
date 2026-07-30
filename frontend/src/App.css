@@ -1,5 +1,5 @@
-/* Manrope is loaded via <link> in public/index.html — a stylesheet @import
-   here would block rendering until it resolves. */
+/* Space Grotesk is loaded via <link> in public/index.html — a stylesheet
+   @import here would block rendering until it resolves. */
 
 body {
   background-color: #050505;

@@ -56,7 +56,7 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
           <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Command Center</p>
-          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Manrope" }}>Dashboard</h1>
+          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Space Grotesk" }}>Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
           <SyncButton onDone={load} />
@@ -91,7 +91,7 @@ export default function Dashboard() {
             <ErrorState what="your dashboard" error={error} onRetry={load} />
           ) : posts.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Manrope" }}>Nothing published yet.</p>
+              <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Space Grotesk" }}>Nothing published yet.</p>
               <p className="text-sm text-white/40 mt-2">Create your first post to see it here.</p>
             </div>
           ) : (

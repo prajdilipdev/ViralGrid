@@ -23,7 +23,7 @@ export default function Layout({ children }) {
       <aside className="md:w-60 md:min-h-screen max-w-full border-b md:border-b-0 md:border-r border-white/10 flex md:flex-col bg-[#0A0A0B] shrink-0">
         <div className="hidden md:flex items-center gap-2 px-6 h-16 border-b border-white/10 cursor-pointer" onClick={() => navigate("/")}>
           <Logo size={20} className="text-white" />
-          <span className="tracking-tight font-semibold" style={{ fontFamily: "Manrope" }}>ViralGrid</span>
+          <span className="tracking-tight font-semibold" style={{ fontFamily: "Space Grotesk" }}>ViralGrid</span>
         </div>
         {/* min-w-0: without it a flex child keeps its content width, so the nav
             pushed the whole page sideways on mobile instead of scrolling itself. */}

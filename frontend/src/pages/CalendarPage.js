@@ -101,7 +101,7 @@ export default function CalendarPage() {
   return (
     <div data-testid="calendar-page" className="p-6 sm:p-8">
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Planning</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Content Calendar</h1>
+      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Content Calendar</h1>
 
       {loading ? <CalendarSkeleton /> : error ? (
         <div className="border border-white/10 bg-[#0A0A0B]">

@@ -55,7 +55,7 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Manrope', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'],
+        sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {

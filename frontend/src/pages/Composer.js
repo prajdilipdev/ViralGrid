@@ -132,7 +132,7 @@ export default function Composer() {
   return (
     <div data-testid="composer-page" className="p-6 sm:p-8 max-w-6xl">
       <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Create</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Manrope" }}>Content Composer</h1>
+      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Content Composer</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
