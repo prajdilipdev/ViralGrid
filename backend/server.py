@@ -593,7 +593,11 @@ async def _publish_post(post: dict):
     conns = set(conn_map)
     media = None
     if post.get("media_ids"):
-        media = await db.media.find_one({"media_id": post["media_ids"][0]}, {"_id": 0})
+        # Scoped to the post's owner as well as the id — defence in depth, in
+        # case an unowned id ever reaches a stored post.
+        media = await db.media.find_one(
+            {"media_id": post["media_ids"][0], "user_id": user_id}, {"_id": 0}
+        )
     results = post.get("platform_results", {})
     transcode_cache = {}
     for platform in post.get("platforms", []):
@@ -665,12 +669,27 @@ async def _publish_post(post: dict):
     return final
 
 
+async def assert_owns_media(media_ids: List[str], user_id: str) -> None:
+    """Reject media_ids the caller does not own.
+
+    media_ids arrives from the request body, so without this a user could
+    reference someone else's upload and publish it to their own account.
+    """
+    ids = list({m for m in media_ids if m})
+    if not ids:
+        return
+    owned = await db.media.count_documents({"media_id": {"$in": ids}, "user_id": user_id})
+    if owned != len(ids):
+        raise HTTPException(status_code=404, detail="Media not found in your library")
+
+
 @api.post("/posts")
 async def create_post(body: PostCreate, user: User = Depends(get_current_user)):
     if body.action in ("schedule",) and not body.scheduled_at:
         raise HTTPException(status_code=400, detail="scheduled_at required for scheduling")
     if body.action in ("publish", "schedule") and not body.platforms:
         raise HTTPException(status_code=400, detail="Select at least one platform")
+    await assert_owns_media(body.media_ids, user.user_id)
     post_id = f"post_{uuid.uuid4().hex[:12]}"
     status = {"draft": "draft", "schedule": "scheduled", "publish": "publishing"}.get(body.action, "draft")
     doc = {
@@ -763,6 +782,8 @@ async def bulk_create_posts(body: BulkCreateRequest, user: User = Depends(get_cu
         raise HTTPException(status_code=400, detail="No items provided")
     if len(body.items) > 200:
         raise HTTPException(status_code=400, detail="Bulk limit is 200 posts per request")
+    # One check for the whole batch rather than per item.
+    await assert_owns_media([m for item in body.items for m in item.media_ids], user.user_id)
     created = []
     errors = []
     for idx, item in enumerate(body.items):
