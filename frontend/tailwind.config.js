@@ -13,6 +13,28 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        // --- Editorial control room palette -------------------------------
+        // Warm olive-tinted near-blacks, not blue/neutral grays.
+        ink: {
+          950: '#0A0A09',
+          900: '#111110',
+          800: '#181916',
+          700: '#232420',
+          600: '#30322C',
+        },
+        paper: {
+          DEFAULT: '#F4F3EC',   // off-white for dark mode text
+          warm: '#F3F1EC',      // light-mode page background
+        },
+        signal: {
+          DEFAULT: '#EEFF00',   // electric yellow — actions/focus only
+          dim: '#C9D600',
+          deep: '#8E9900',      // light-mode accent (readable on paper)
+        },
+        // `white` is redefined as a theme variable so the ~390 existing
+        // text-white/50, border-white/10, bg-white/5 utilities across the app
+        // become theme-aware for free, and invert correctly in light mode.
+        white: 'rgb(var(--vg-fg) / <alpha-value>)',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -55,7 +77,12 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'],
+        // Body: clean humanist sans
+        sans: ['Instrument Sans', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'],
+        // Headings: distinctive grotesque display
+        display: ['Bricolage Grotesque', 'Instrument Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Labels, badges, meta, footer
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
       },
       keyframes: {
         'accordion-down': {

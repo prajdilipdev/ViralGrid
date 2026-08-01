@@ -10,9 +10,9 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, 
 import { Eye, Heart, MessageCircle, Share2, Trash2 } from "lucide-react";
 
 const KPI = ({ label, value, icon: Icon, testid }) => (
-  <div data-testid={testid} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 min-w-0">
+  <div data-testid={testid} className="border-r border-b border-white/5 bg-ink-900 p-6 min-w-0">
     <div className="flex items-center justify-between gap-2">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 truncate">{label}</p>
+      <p className="vg-label text-[10px] font-semibold text-white/50 truncate">{label}</p>
       <Icon size={15} className="text-white/30 shrink-0" />
     </div>
     <p className="mt-3 text-3xl font-light tracking-tight truncate" title={exactValue(value)}>{statValue(value)}</p>
@@ -37,9 +37,9 @@ export default function Analytics() {
   if (error && !data) {
     return (
       <div data-testid="analytics-page" className="p-6 sm:p-8">
-        <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8">Analytics</h1>
-        <div className="border border-white/10 bg-[#0A0A0B]">
+        <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Performance</p>
+        <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-8">Analytics</h1>
+        <div className="vg-panel bg-ink-900">
           <ErrorState what="your analytics" error={error} onRetry={load} />
         </div>
       </div>
@@ -49,8 +49,8 @@ export default function Analytics() {
   if (!data) {
     return (
       <div data-testid="analytics-page" className="p-6 sm:p-8">
-        <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-        <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Analytics</h1>
+        <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Performance</p>
+        <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-8">Analytics</h1>
         <AnalyticsSkeleton />
       </div>
     );
@@ -62,8 +62,8 @@ export default function Analytics() {
     <div data-testid="analytics-page" className="p-6 sm:p-8">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Performance</p>
-          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Space Grotesk" }}>Analytics</h1>
+          <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Performance</p>
+          <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light">Analytics</h1>
         </div>
         <SyncButton onDone={load} />
       </div>
@@ -77,7 +77,7 @@ export default function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <div className="border border-white/10 bg-[#0A0A0B] p-6">
+        <div className="vg-panel bg-ink-900 p-6">
           <h3 className="text-sm font-medium mb-6">Views Over Time</h3>
           {timeline.length === 0 ? (
             <p className="text-xs text-white/40 py-16 text-center">Publish content to see trends.</p>
@@ -99,7 +99,7 @@ export default function Analytics() {
           )}
         </div>
 
-        <div className="border border-white/10 bg-[#0A0A0B] p-6">
+        <div className="vg-panel bg-ink-900 p-6">
           <h3 className="text-sm font-medium mb-6">Views by Platform</h3>
           {per_platform.length === 0 ? (
             <p className="text-xs text-white/40 py-16 text-center">No platform data yet.</p>
@@ -121,7 +121,7 @@ export default function Analytics() {
       </div>
 
       {per_platform.length > 0 && (
-        <div className="border border-white/10 bg-[#0A0A0B] mt-6">
+        <div className="vg-panel bg-ink-900 mt-6">
           <div className="px-6 py-4 border-b border-white/10"><h3 className="text-sm font-medium">Platform Breakdown</h3></div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -156,7 +156,7 @@ export default function Analytics() {
       )}
 
       {deleted.length > 0 && (
-        <div data-testid="analytics-deleted-section" className="border border-white/10 bg-[#0A0A0B] mt-6">
+        <div data-testid="analytics-deleted-section" className="vg-panel bg-ink-900 mt-6">
           <div className="px-6 py-4 border-b border-white/10 flex items-center gap-2">
             <Trash2 size={14} className="text-white/40" />
             <h3 className="text-sm font-medium">Removed from platform</h3>

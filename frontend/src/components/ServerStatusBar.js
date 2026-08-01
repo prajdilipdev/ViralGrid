@@ -15,7 +15,7 @@ export default function ServerStatusBar() {
   return (
     <div
       data-testid="server-status-bar"
-      className="fixed bottom-4 left-4 z-50 w-[290px] border border-white/10 bg-[#0A0A0B]/95 backdrop-blur rounded-md shadow-2xl overflow-hidden"
+      className="fixed bottom-4 left-4 z-50 w-[290px] vg-panel bg-ink-900/95 backdrop-blur rounded-md shadow-2xl overflow-hidden"
       role="status"
       aria-live="polite"
     >

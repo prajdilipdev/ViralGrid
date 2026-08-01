@@ -266,30 +266,30 @@ export default function BulkScheduler() {
 
   return (
     <div data-testid="bulk-scheduler-page" className="p-6 sm:p-8 max-w-7xl">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Batch</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Bulk Scheduler</h1>
+      <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Batch</p>
+      <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-8">Bulk Scheduler</h1>
 
       {/* Shared defaults */}
-      <div className="border border-white/10 bg-[#0A0A0B] p-6 mb-6">
-        <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Shared Defaults</p>
+      <div className="vg-panel bg-ink-900 p-6 mb-6">
+        <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">Shared Defaults</p>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
           <input data-testid="shared-title-prefix" value={shared.titlePrefix} onChange={(e) => setShared({ ...shared, titlePrefix: e.target.value })} placeholder="Title prefix (e.g. Morning Reel)"
-            className="h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40" />
+            className="h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40" />
           <select data-testid="shared-timezone" value={shared.timezone} onChange={(e) => setShared({ ...shared, timezone: e.target.value })}
-            className="h-11 bg-[#111113] border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
+            className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
             {[...new Set([shared.timezone, ...TIMEZONES])].map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <select data-testid="shared-recurrence" value={shared.recurrence} onChange={(e) => setShared({ ...shared, recurrence: e.target.value })}
-            className="h-11 bg-[#111113] border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
+            className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
             <option value="none">One-time</option>
             <option value="daily">Recurring · Daily</option>
             <option value="weekly">Recurring · Weekly</option>
           </select>
         </div>
         <textarea data-testid="shared-caption" value={shared.caption} onChange={(e) => setShared({ ...shared, caption: e.target.value })} placeholder="Default caption"
-          rows={2} className="w-full bg-[#111113] border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 mb-3" />
+          rows={2} className="w-full bg-ink-800 border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 mb-3" />
         <input data-testid="shared-hashtags" value={shared.hashtags} onChange={(e) => setShared({ ...shared, hashtags: e.target.value })} placeholder="Default hashtags (comma separated)"
-          className="w-full h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 mb-4" />
+          className="w-full h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 mb-4" />
         <div>
           <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-white/40 mb-2">Default Platforms</p>
           <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ export default function BulkScheduler() {
               return (
                 <button key={id} data-testid={`shared-platform-${id}`} onClick={() => togglePlatform(id)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-colors duration-200 ${
-                    isSel ? "border-white bg-white text-black" : "border-white/20 text-white/70 hover:bg-white/5"
+                    isSel ? "border-white vg-btn vg-btn-primary" : "border-white/20 text-white/70 hover:bg-white/5"
                   } ${!isConn ? "opacity-40" : ""}`}>
                   <Icon size={12} style={{ color: isSel ? color : color }} />
                   {name}
@@ -327,11 +327,11 @@ export default function BulkScheduler() {
 
       {/* Tab bodies */}
       {tab === "multi" && (
-        <div className="border border-white/10 bg-[#0A0A0B] p-6 mb-6">
+        <div className="vg-panel bg-ink-900 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">Pick or Upload Media</p>
+            <p className="vg-label text-[10px] font-semibold text-white/50">Pick or Upload Media</p>
             <button data-testid="multi-upload-button" onClick={() => fileRef.current?.click()} disabled={uploading}
-              className="h-9 px-4 bg-white text-black rounded-md text-xs font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200 disabled:opacity-50">
+              className="h-9 px-4 vg-btn vg-btn-primary rounded-md text-xs font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200 disabled:opacity-50">
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />} Upload files
             </button>
             <input ref={fileRef} type="file" multiple accept="video/*,image/*" className="hidden"
@@ -349,7 +349,7 @@ export default function BulkScheduler() {
                     onClick={() => setSelectedMedia((s) => (sel ? s.filter((x) => x !== m.media_id) : [...s, m.media_id]))}
                     className={`relative aspect-square rounded-md overflow-hidden border transition-colors duration-200 ${sel ? "border-white ring-2 ring-white/40" : "border-white/10 hover:border-white/30"}`}>
                     <img src={mediaUrl(m.type === "video" ? m.thumbnail : m.filename)} alt="" className="w-full h-full object-cover" />
-                    {sel && <div className="absolute top-1 right-1 bg-white text-black rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">{selectedMedia.indexOf(m.media_id) + 1}</div>}
+                    {sel && <div className="absolute top-1 right-1 vg-btn vg-btn-primary rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">{selectedMedia.indexOf(m.media_id) + 1}</div>}
                     <div className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] px-1.5 py-0.5 truncate text-white/80">{m.original_name}</div>
                   </button>
                 );
@@ -363,7 +363,7 @@ export default function BulkScheduler() {
 
           <div className="mt-6">
             <button data-testid="build-multi-button" onClick={buildFromMulti}
-              className="h-11 px-6 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200">
+              className="h-11 px-6 vg-btn vg-btn-primary rounded-md text-sm font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200">
               <Wand2 size={14} /> Generate Preview ({selectedMedia.length ? `${selectedMedia.length} media × ${previewSlots.length} slots` : "select media"})
             </button>
           </div>
@@ -371,10 +371,10 @@ export default function BulkScheduler() {
       )}
 
       {tab === "template" && (
-        <div className="border border-white/10 bg-[#0A0A0B] p-6 mb-6">
-          <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Single Media (optional)</p>
+        <div className="vg-panel bg-ink-900 p-6 mb-6">
+          <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">Single Media (optional)</p>
           <select data-testid="template-media-select" value={templateMediaId} onChange={(e) => setTemplateMediaId(e.target.value)}
-            className="w-full max-w-md h-11 bg-[#111113] border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40 mb-4">
+            className="w-full max-w-md h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40 mb-4">
             <option value="">— No media (text-only posts) —</option>
             {libMedia.map((m) => <option key={m.media_id} value={m.media_id}>{m.original_name} · {m.type}</option>)}
           </select>
@@ -383,7 +383,7 @@ export default function BulkScheduler() {
 
           <div className="mt-6">
             <button data-testid="build-template-button" onClick={buildFromTemplate}
-              className="h-11 px-6 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200">
+              className="h-11 px-6 vg-btn vg-btn-primary rounded-md text-sm font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200">
               <Wand2 size={14} /> Generate {previewSlots.length} slot preview
             </button>
           </div>
@@ -391,16 +391,16 @@ export default function BulkScheduler() {
       )}
 
       {tab === "csv" && (
-        <div className="border border-white/10 bg-[#0A0A0B] p-6 mb-6">
-          <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Upload CSV</p>
+        <div className="vg-panel bg-ink-900 p-6 mb-6">
+          <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">Upload CSV</p>
           <p className="text-xs text-white/50 mb-3">Required columns: <b>title, scheduled_at</b>. Optional: <code>caption, hashtags, media_id, platforms</code> (platforms pipe-separated, e.g. <code>youtube_shorts|tiktok</code>). Times are interpreted in your chosen timezone.</p>
           <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden"
             data-testid="csv-file-input" onChange={(e) => buildFromCsv(e.target.files?.[0])} />
           <button data-testid="csv-upload-button" onClick={() => csvRef.current?.click()}
-            className="h-11 px-5 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200">
+            className="h-11 px-5 vg-btn vg-btn-primary rounded-md text-sm font-medium flex items-center gap-2 hover:-translate-y-0.5 transition-transform duration-200">
             <UploadCloud size={14} /> Choose CSV file
           </button>
-          <pre className="mt-4 text-[11px] text-white/40 bg-[#111113] border border-white/5 rounded-md p-3 overflow-auto">{`title,caption,hashtags,media_id,platforms,scheduled_at
+          <pre className="mt-4 text-[11px] text-white/40 bg-ink-800 border border-white/5 rounded-md p-3 overflow-auto">{`title,caption,hashtags,media_id,platforms,scheduled_at
 Morning motivation,"Rise & grind","monday,motivation",media_abc123,youtube_shorts|tiktok,2026-02-20T09:00
 Product launch,"Available now","launch,new",media_def456,instagram_reels,2026-02-20T18:00`}</pre>
         </div>
@@ -408,10 +408,10 @@ Product launch,"Available now","launch,new",media_def456,instagram_reels,2026-02
 
       {/* Preview table */}
       {rows.length > 0 && (
-        <div className="border border-white/10 bg-[#0A0A0B]">
+        <div className="vg-panel bg-ink-900">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
             <div>
-              <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">Preview</p>
+              <p className="vg-label text-[10px] font-semibold text-white/50">Preview</p>
               <p className="text-sm mt-0.5">{rows.length} post{rows.length === 1 ? "" : "s"} to be scheduled</p>
             </div>
             <div className="flex gap-2">
@@ -448,12 +448,12 @@ Product launch,"Available now","launch,new",media_def456,instagram_reels,2026-02
                     <td className="px-4 py-3 text-white/40">{i + 1}</td>
                     <td className="px-4 py-3">
                       <input data-testid={`row-title-${i}`} value={r.title} onChange={(e) => updateRow(r.key, { title: e.target.value })}
-                        className="w-40 h-8 bg-[#111113] border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40" />
+                        className="w-40 h-8 bg-ink-800 border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40" />
                     </td>
                     <td className="px-4 py-3">
                       <input data-testid={`row-datetime-${i}`} type="datetime-local" value={r.scheduled_at}
                         onChange={(e) => updateRow(r.key, { scheduled_at: e.target.value })}
-                        className="h-8 bg-[#111113] border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                        className="h-8 bg-ink-800 border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -462,7 +462,7 @@ Product launch,"Available now","launch,new",media_def456,instagram_reels,2026-02
                           const m = libMedia.find((x) => x.media_id === e.target.value);
                           updateRow(r.key, { media_id: e.target.value, media_name: m?.original_name || "", media_thumb: m?.type === "video" ? m?.thumbnail : m?.filename });
                         }}
-                          className="max-w-[140px] h-8 bg-[#111113] border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40">
+                          className="max-w-[140px] h-8 bg-ink-800 border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40">
                           <option value="">—</option>
                           {libMedia.map((m) => <option key={m.media_id} value={m.media_id}>{m.original_name}</option>)}
                         </select>
@@ -486,7 +486,7 @@ Product launch,"Available now","launch,new",media_def456,instagram_reels,2026-02
                     </td>
                     <td className="px-4 py-3">
                       <input data-testid={`row-caption-${i}`} value={r.caption} onChange={(e) => updateRow(r.key, { caption: e.target.value })}
-                        className="w-56 h-8 bg-[#111113] border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40" />
+                        className="w-56 h-8 bg-ink-800 border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40" />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button data-testid={`row-duplicate-${i}`} onClick={() => duplicateRow(r.key)} className="text-white/40 hover:text-white p-1 transition-colors duration-200"><Copy size={13} /></button>
@@ -508,13 +508,13 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
   return (
     <div className="mt-6 pt-6 border-t border-white/10">
       <div className="flex items-center gap-2 mb-4">
-        <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mr-2">Slot Pattern</p>
+        <p className="vg-label text-[10px] font-semibold text-white/50 mr-2">Slot Pattern</p>
         <button data-testid="mode-pattern" onClick={() => setMode("pattern")}
-          className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors duration-200 ${mode === "pattern" ? "bg-white text-black border-white" : "border-white/20 text-white/60 hover:text-white"}`}>
+          className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors duration-200 ${mode === "pattern" ? "vg-btn vg-btn-primary border-white" : "border-white/20 text-white/60 hover:text-white"}`}>
           Days × Times
         </button>
         <button data-testid="mode-interval" onClick={() => setMode("interval")}
-          className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors duration-200 ${mode === "interval" ? "bg-white text-black border-white" : "border-white/20 text-white/60 hover:text-white"}`}>
+          className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors duration-200 ${mode === "interval" ? "vg-btn vg-btn-primary border-white" : "border-white/20 text-white/60 hover:text-white"}`}>
           Interval + Count
         </button>
       </div>
@@ -525,12 +525,12 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
             <div>
               <label className="text-[10px] uppercase text-white/40 block mb-1">Start date</label>
               <input data-testid="pattern-start-date" type="date" value={pattern.startDate} onChange={(e) => setPattern({ ...pattern, startDate: e.target.value })}
-                className="w-full h-10 bg-[#111113] border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
             </div>
             <div>
               <label className="text-[10px] uppercase text-white/40 block mb-1">End date</label>
               <input data-testid="pattern-end-date" type="date" value={pattern.endDate} onChange={(e) => setPattern({ ...pattern, endDate: e.target.value })}
-                className="w-full h-10 bg-[#111113] border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
             </div>
           </div>
           <div>
@@ -541,7 +541,7 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
                 return (
                   <button key={i} data-testid={`pattern-day-${label}`}
                     onClick={() => setPattern({ ...pattern, days: on ? pattern.days.filter((d) => d !== i) : [...pattern.days, i] })}
-                    className={`w-11 h-9 text-[10px] rounded-md border transition-colors duration-200 ${on ? "bg-white text-black border-white" : "border-white/15 text-white/60 hover:bg-white/5"}`}>
+                    className={`w-11 h-9 text-[10px] rounded-md border transition-colors duration-200 ${on ? "vg-btn vg-btn-primary border-white" : "border-white/15 text-white/60 hover:bg-white/5"}`}>
                     {label}
                   </button>
                 );
@@ -552,7 +552,7 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
             <label className="text-[10px] uppercase text-white/40 block mb-1">Times of day (HH:mm)</label>
             <div className="flex flex-wrap gap-2">
               {pattern.times.map((t, i) => (
-                <div key={i} className="flex items-center gap-1 bg-[#111113] border border-white/10 rounded-md px-2 h-9">
+                <div key={i} className="flex items-center gap-1 bg-ink-800 border border-white/10 rounded-md px-2 h-9">
                   <input data-testid={`pattern-time-${i}`} type="time" value={t}
                     onChange={(e) => setPattern({ ...pattern, times: pattern.times.map((x, j) => (j === i ? e.target.value : x)) })}
                     className="bg-transparent text-xs w-24 focus:outline-none [color-scheme:dark]" />
@@ -572,15 +572,15 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
           <div className="sm:col-span-2">
             <label className="text-[10px] uppercase text-white/40 block mb-1">Start date & time</label>
             <input data-testid="interval-start" type="datetime-local" value={interval.startDatetime} onChange={(e) => setInterval({ ...interval, startDatetime: e.target.value })}
-              className="w-full h-10 bg-[#111113] border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+              className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
           </div>
           <div>
             <label className="text-[10px] uppercase text-white/40 block mb-1">Every</label>
             <div className="flex gap-1">
               <input data-testid="interval-value" type="number" min="1" value={interval.intervalValue} onChange={(e) => setInterval({ ...interval, intervalValue: Number(e.target.value) || 1 })}
-                className="w-16 h-10 bg-[#111113] border border-white/10 rounded-md px-2 text-xs focus:outline-none focus:border-white/40" />
+                className="w-16 h-10 bg-ink-800 border border-white/10 rounded-md px-2 text-xs focus:outline-none focus:border-white/40" />
               <select data-testid="interval-unit" value={interval.intervalUnit} onChange={(e) => setInterval({ ...interval, intervalUnit: e.target.value })}
-                className="flex-1 h-10 bg-[#111113] border border-white/10 rounded-md px-2 text-xs focus:outline-none focus:border-white/40">
+                className="flex-1 h-10 bg-ink-800 border border-white/10 rounded-md px-2 text-xs focus:outline-none focus:border-white/40">
                 <option value="hour">hours</option>
                 <option value="day">days</option>
                 <option value="week">weeks</option>
@@ -590,7 +590,7 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
           <div>
             <label className="text-[10px] uppercase text-white/40 block mb-1">Total posts</label>
             <input data-testid="interval-count" type="number" min="1" max="200" value={interval.count} onChange={(e) => setInterval({ ...interval, count: Number(e.target.value) || 1 })}
-              className="w-full h-10 bg-[#111113] border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
+              className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
           </div>
         </div>
       )}

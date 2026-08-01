@@ -61,26 +61,26 @@ export default function HistoryPage() {
 
   return (
     <div data-testid="history-page" className="p-6 sm:p-8">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Archive</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Post History</h1>
+      <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Archive</p>
+      <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-8">Post History</h1>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {FILTERS.map((f) => (
           <button key={f} data-testid={`history-filter-${f}`} onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-xs border transition-colors duration-200 ${filter === f ? "bg-white text-black border-white font-medium" : "border-white/15 text-white/60 hover:text-white"}`}>
+            className={`px-4 py-1.5 rounded-full text-xs border transition-colors duration-200 ${filter === f ? "vg-btn vg-btn-primary border-white font-medium" : "border-white/15 text-white/60 hover:text-white"}`}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
       </div>
 
-      <div className="border border-white/10 bg-[#0A0A0B]">
+      <div className="vg-panel bg-ink-900">
         {loading ? (
           <ListSkeleton rows={6} testid="skeleton-history" />
         ) : error ? (
           <ErrorState what="your posts" error={error} onRetry={load} />
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
-            <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Space Grotesk" }}>No posts here.</p>
+            <p className="text-2xl font-light text-white/30 tracking-tight">No posts here.</p>
           </div>
         ) : (
           filtered.map((p) => (
@@ -107,7 +107,7 @@ export default function HistoryPage() {
                   )}
                   {p.status === "draft" && p.platforms.length > 0 && (
                     <button data-testid={`publish-draft-${p.post_id}`} onClick={() => publishDraft(p.post_id)} disabled={busy === p.post_id} title="Publish now"
-                      className="w-8 h-8 bg-white text-black rounded-md flex items-center justify-center transition-transform duration-200 hover:-translate-y-0.5"><Send size={13} /></button>
+                      className="w-8 h-8 vg-btn vg-btn-primary rounded-md flex items-center justify-center transition-transform duration-200 hover:-translate-y-0.5"><Send size={13} /></button>
                   )}
                   <button data-testid={`expand-post-${p.post_id}`} onClick={() => setExpanded(expanded === p.post_id ? null : p.post_id)}
                     className="w-8 h-8 border border-white/15 rounded-md flex items-center justify-center hover:bg-white/5 transition-colors duration-200">

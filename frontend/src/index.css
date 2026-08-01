@@ -2,6 +2,299 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   EDITORIAL CONTROL ROOM — theme tokens
+   Dark is the default. `.light` on <html> flips it manually, so the
+   user can choose rather than being bound to the OS preference.
+   ============================================================ */
+:root {
+    --vg-fg: 244 243 236; /* paper — drives text-white/*, border-white/* */
+    --vg-bg: 10 10 9; /* ink-950 */
+    --vg-panel: 17 17 16; /* ink-900 */
+    --vg-hairline: 35 36 32; /* ink-700 */
+    --vg-signal: 238 255 0; /* accent as foreground: focus, ticks, indicators */
+    --vg-signal-fill: 238 255 0; /* accent as a fill with dark text on top */
+    --vg-grain-opacity: 0.03;
+    --vg-glow-strength: 0.04;
+    --vg-panel-top-light: 0.02;
+}
+
+.light {
+    --vg-fg: 16 16 14; /* near-black ink on paper */
+    --vg-bg: 243 241 236; /* warm paper */
+    --vg-panel: 255 255 255; /* plain white cards */
+    --vg-hairline: 0 0 0;
+    /* Two accent tokens in light mode, because one value cannot serve both
+       directions: #8E9900 as foreground on paper measures only 2.77:1 (fails
+       WCAG AA), while a value dark enough to pass leaves too little contrast
+       for dark button labels sitting on top of it.
+         foreground #6B7300 on paper  -> 4.56:1  (AA text)
+         ink on fill #8E9900          -> 6.33:1  (AA text) */
+    --vg-signal: 107 115 0; /* accent as foreground */
+    --vg-signal-fill: 142 153 0; /* signal-deep as a fill */
+    --vg-grain-opacity: 0.5; /* grain reads much lighter on paper */
+    --vg-glow-strength: 0.05;
+    --vg-panel-top-light: 0;
+}
+
+/* ---------- Page background: fixed so glows don't scroll ---------- */
+body {
+    background-color: rgb(var(--vg-bg));
+    color: rgb(var(--vg-fg));
+    background-image:
+        radial-gradient(
+            60rem 60rem at 0% 0%,
+            rgb(var(--vg-signal) / var(--vg-glow-strength)),
+            transparent 70%
+        ),
+        radial-gradient(
+            55rem 55rem at 100% 100%,
+            rgb(var(--vg-signal) / calc(var(--vg-glow-strength) * 0.7)),
+            transparent 70%
+        );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+
+/* ---------- Film grain: the thing that stops dark UI feeling flat ---------- */
+.vg-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: var(--vg-grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Panels: physical, lit objects ---------- */
+.vg-panel {
+    position: relative;
+    background-color: rgb(var(--vg-panel));
+    border: 1px solid rgb(var(--vg-hairline) / 0.6);
+    border-radius: 0.75rem;
+    transition:
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.vg-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+        180deg,
+        rgb(255 255 255 / var(--vg-panel-top-light)),
+        transparent 45%
+    );
+}
+
+.vg-panel:hover {
+    border-color: rgb(var(--vg-signal) / 0.28);
+    box-shadow: 0 12px 36px -12px rgb(0 0 0 / 0.7);
+}
+
+.light .vg-panel {
+    border-color: rgb(0 0 0 / 0.1);
+}
+
+.light .vg-panel:hover {
+    border-color: rgb(0 0 0 / 0.18);
+    box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.18);
+}
+
+/* ---------- Buttons ---------- */
+.vg-btn {
+    position: relative;
+    overflow: hidden;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    transition:
+        transform 0.12s ease,
+        box-shadow 0.25s ease,
+        border-color 0.25s ease,
+        background-color 0.25s ease;
+}
+
+.vg-btn:active {
+    transform: translateY(1px);
+}
+
+.vg-btn-primary {
+    color: #0a0a09;
+    background-image: linear-gradient(
+        135deg,
+        rgb(var(--vg-signal-fill)),
+        rgb(var(--vg-signal-fill) / 0.82)
+    );
+}
+
+.vg-btn-primary:hover {
+    box-shadow: 0 0 24px -4px rgb(var(--vg-signal-fill) / 0.45);
+}
+
+/* One-time diagonal sheen sweeping across on hover. */
+.vg-btn-primary::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -60%;
+    width: 40%;
+    transform: skewX(-20deg);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(255 255 255 / 0.45),
+        transparent
+    );
+    opacity: 0;
+}
+
+.vg-btn-primary:hover::after {
+    animation: vg-sheen 0.7s ease-out;
+}
+
+@keyframes vg-sheen {
+    0% {
+        left: -60%;
+        opacity: 1;
+    }
+    100% {
+        left: 120%;
+        opacity: 0;
+    }
+}
+
+.vg-btn-ghost {
+    background-color: transparent;
+    border: 1px solid rgb(var(--vg-fg) / 0.18);
+    color: rgb(var(--vg-fg) / 0.8);
+}
+
+.vg-btn-ghost:hover {
+    border-color: rgb(var(--vg-fg) / 0.35);
+    background-color: rgb(var(--vg-fg) / 0.05);
+    color: rgb(var(--vg-fg));
+}
+
+/* ---------- Nav ---------- */
+.vg-nav-link {
+    position: relative;
+    transition:
+        transform 0.18s ease,
+        color 0.18s ease,
+        background-color 0.18s ease;
+}
+
+.vg-nav-link:hover {
+    transform: translateX(2px);
+}
+
+.vg-nav-active {
+    background-color: rgb(var(--vg-fg) / 0.06);
+}
+
+/* Glowing accent bar on the active nav item. */
+.vg-nav-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 1.1rem;
+    width: 2px;
+    border-radius: 2px;
+    transform: translateY(-50%);
+    background: rgb(var(--vg-signal));
+    box-shadow: 0 0 10px rgb(var(--vg-signal) / 0.8);
+    animation: vg-fade-in 0.35s ease both;
+}
+
+@keyframes vg-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ---------- Heading underline tick ---------- */
+.vg-tick::after {
+    content: "";
+    display: block;
+    height: 2px;
+    width: 38px;
+    margin-top: 0.65rem;
+    background: rgb(var(--vg-signal));
+    border-radius: 2px;
+    animation: vg-tick-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vg-tick-in {
+    from {
+        width: 0;
+    }
+    to {
+        width: 38px;
+    }
+}
+
+/* ---------- Breathing pulse for unread/notification badges ---------- */
+.vg-pulse {
+    animation: vg-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes vg-breathe {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgb(var(--vg-signal) / 0.45);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgb(var(--vg-signal) / 0);
+    }
+}
+
+/* ---------- Details: scrollbar, selection, focus ---------- */
+::selection {
+    background: rgb(var(--vg-signal) / 0.85);
+    color: #0a0a09;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: rgb(var(--vg-bg));
+}
+::-webkit-scrollbar-thumb {
+    background: rgb(var(--vg-hairline));
+    border-radius: 8px;
+    border: 2px solid rgb(var(--vg-bg));
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--vg-fg) / 0.28);
+}
+
+:focus-visible {
+    outline: 2px solid rgb(var(--vg-signal));
+    outline-offset: 2px;
+}
+
+/* ---------- Global reduced-motion honour ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* Skeleton shimmer: a highlight band sweeping left→right across the
    placeholder. Only `transform` animates, so it stays on the compositor and
    runs smoothly even with many placeholders on screen. */
@@ -48,7 +341,7 @@
 @keyframes vg-fade-up {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
     }
     to {
         opacity: 1;
@@ -57,7 +350,7 @@
 }
 
 .vg-fade-up {
-    animation: vg-fade-up 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: vg-fade-up 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
     /* Set --vg-stagger on an item to offset it within a group. */
     animation-delay: var(--vg-stagger, 0ms);
 }
@@ -73,15 +366,32 @@
 body {
     margin: 0;
     font-family:
-        "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Helvetica Neue", sans-serif;
+        "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Roboto", "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+/* Display face for headings, with the slightly tightened tracking the
+   grotesque is designed for. */
+h1,
+h2,
+h3,
+.vg-display {
+    font-family: "Bricolage Grotesque", "Instrument Sans", sans-serif;
+    letter-spacing: -0.02em;
+}
+
+code,
+.vg-mono {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* Small uppercase label treatment used for meta text, badges and footers. */
+.vg-label {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
 }
 
 @layer base {

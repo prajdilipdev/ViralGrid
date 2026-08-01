@@ -29,7 +29,7 @@ export const StatsSkeleton = ({ count = 6 }) => (
   <Shell testid="skeleton-stats">
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-t border-l border-white/5">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
+        <div key={i} className="border-r border-b border-white/5 bg-ink-900 p-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-2.5 w-20" delay={i * 90} />
             <Skeleton className="h-3.5 w-3.5 rounded-sm" delay={i * 90} />
@@ -64,7 +64,7 @@ export const ConnectionsSkeleton = ({ count = 6 }) => (
   <Shell testid="skeleton-connections">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-t border-l border-white/5">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 flex flex-col gap-5">
+        <div key={i} className="border-r border-b border-white/5 bg-ink-900 p-6 flex flex-col gap-5">
           <div className="flex items-center gap-4">
             <Skeleton className="w-12 h-12 rounded-md" delay={i * 100} />
             <div className="flex-1 space-y-2">
@@ -85,7 +85,7 @@ export const AnalyticsSkeleton = () => (
   <Shell testid="skeleton-analytics">
     <div className="grid grid-cols-2 lg:grid-cols-4 border-t border-l border-white/5">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="border-r border-b border-white/5 bg-[#0A0A0B] p-6">
+        <div key={i} className="border-r border-b border-white/5 bg-ink-900 p-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-2.5 w-16" />
             <Skeleton className="h-3.5 w-3.5 rounded-sm" />
@@ -96,7 +96,7 @@ export const AnalyticsSkeleton = () => (
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="border border-white/10 bg-[#0A0A0B] p-6">
+        <div key={i} className="vg-panel bg-ink-900 p-6">
           <Skeleton className="h-3 w-32 mb-6" />
           <div className="h-[260px] flex items-end gap-2">
             {[45, 70, 35, 85, 55, 75, 40, 65, 50, 80].map((h, j) => (
@@ -113,20 +113,20 @@ export const AnalyticsSkeleton = () => (
 export const CalendarSkeleton = () => (
   <Shell testid="skeleton-calendar">
     <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-      <div className="xl:col-span-3 border border-white/10 bg-[#0A0A0B]">
+      <div className="xl:col-span-3 vg-panel bg-ink-900">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <Skeleton className="h-3.5 w-28" />
           <div className="flex gap-2"><Skeleton className="w-8 h-8 rounded-md" /><Skeleton className="w-8 h-8 rounded-md" /></div>
         </div>
         <div className="grid grid-cols-7 gap-px bg-white/5 p-px">
           {Array.from({ length: 42 }).map((_, i) => (
-            <div key={i} className="bg-[#0A0A0B] min-h-[84px] p-2">
+            <div key={i} className="bg-ink-900 min-h-[84px] p-2">
               <Skeleton className="h-2.5 w-4" />
             </div>
           ))}
         </div>
       </div>
-      <div className="border border-white/10 bg-[#0A0A0B]">
+      <div className="vg-panel bg-ink-900">
         <div className="px-6 py-4 border-b border-white/10"><Skeleton className="h-3.5 w-24" /></div>
         <div className="p-4 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (

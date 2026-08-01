@@ -100,16 +100,16 @@ export default function CalendarPage() {
 
   return (
     <div data-testid="calendar-page" className="p-6 sm:p-8">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Planning</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Content Calendar</h1>
+      <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Planning</p>
+      <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-8">Content Calendar</h1>
 
       {loading ? <CalendarSkeleton /> : error ? (
-        <div className="border border-white/10 bg-[#0A0A0B]">
+        <div className="vg-panel bg-ink-900">
           <ErrorState what="your calendar" error={error} onRetry={load} />
         </div>
       ) : (
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-3 border border-white/10 bg-[#0A0A0B]">
+        <div className="xl:col-span-3 vg-panel bg-ink-900">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
             <h3 className="text-sm font-medium">{month.format("MMMM YYYY")}</h3>
             <div className="flex gap-2">
@@ -130,7 +130,7 @@ export default function CalendarPage() {
               const isToday = day.isSame(dayjs(), "day");
               return (
                 <div key={key} data-testid={`calendar-day-${key}`} className={`min-h-[92px] border-r border-b border-white/5 p-1.5 ${inMonth ? "" : "opacity-30"}`}>
-                  <span className={`text-[11px] inline-flex w-5 h-5 items-center justify-center rounded-full ${isToday ? "bg-white text-black font-semibold" : "text-white/50"}`}>{day.date()}</span>
+                  <span className={`text-[11px] inline-flex w-5 h-5 items-center justify-center rounded-full ${isToday ? "vg-btn vg-btn-primary font-semibold" : "text-white/50"}`}>{day.date()}</span>
                   <div className="mt-1 space-y-1">
                     {dayPosts.slice(0, 3).map((p) => (
                       <div key={p.post_id} className={`text-[9px] px-1.5 py-1 rounded-sm border truncate ${STATUS_COLORS[p.status] || "border-white/10"} bg-white/[0.03]`} title={p.title}>
@@ -145,7 +145,7 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="border border-white/10 bg-[#0A0A0B] h-fit">
+        <div className="vg-panel bg-ink-900 h-fit">
           <div className="px-6 py-4 border-b border-white/10">
             <h3 className="text-sm font-medium">Publish Queue</h3>
             <p className="text-[11px] text-white/40 mt-0.5">Auto-publishes at scheduled time</p>
@@ -175,7 +175,7 @@ export default function CalendarPage() {
                           type="datetime-local"
                           value={newTime}
                           onChange={(e) => setNewTime(e.target.value)}
-                          className="w-full bg-[#111113] border border-white/15 rounded-md px-2 py-1.5 text-[11px] focus:outline-none focus:border-white/40"
+                          className="w-full bg-ink-800 border border-white/15 rounded-md px-2 py-1.5 text-[11px] focus:outline-none focus:border-white/40"
                         />
                         <p className="text-[9px] text-white/35">
                           Times are in {p.timezone || guessedTz}
@@ -185,7 +185,7 @@ export default function CalendarPage() {
                             data-testid={`reschedule-save-${p.post_id}`}
                             onClick={() => saveReschedule(p)}
                             disabled={busy === p.post_id || !newTime}
-                            className="flex-1 h-7 bg-white text-black rounded text-[10px] font-medium disabled:opacity-40"
+                            className="flex-1 h-7 vg-btn vg-btn-primary rounded text-[10px] font-medium disabled:opacity-40"
                           >
                             {busy === p.post_id ? "Saving…" : "Save"}
                           </button>

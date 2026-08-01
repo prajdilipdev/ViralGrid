@@ -23,7 +23,7 @@ const FOOTER_LINKS = [
 
 export default function PublicPage({ title, updated, intro, children }) {
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col">
+    <div className="min-h-screen bg-ink-950 text-white flex flex-col">
       <header className="border-b border-white/10">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center gap-2.5">
           <Link to="/about" className="flex items-center gap-2.5">

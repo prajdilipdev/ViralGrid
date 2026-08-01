@@ -33,7 +33,7 @@ export default function AuthCallback() {
   }, [navigate, setUser]);
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+    <div className="min-h-screen bg-ink-950 flex items-center justify-center">
       <div className="text-white/60 text-sm tracking-[0.2em] uppercase animate-pulse">Authenticating…</div>
     </div>
   );

@@ -131,14 +131,14 @@ export default function Composer() {
 
   return (
     <div data-testid="composer-page" className="p-6 sm:p-8 max-w-6xl">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Create</p>
-      <h1 className="text-3xl sm:text-4xl tracking-tighter font-light mb-8" style={{ fontFamily: "Space Grotesk" }}>Content Composer</h1>
+      <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Create</p>
+      <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-8">Content Composer</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
           {/* Media upload */}
-          <div className="border border-white/10 bg-[#0A0A0B] p-6">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Media</p>
+          <div className="vg-panel bg-ink-900 p-6">
+            <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">Media</p>
             {!media ? (
               <button
                 data-testid="media-upload-dropzone"
@@ -183,56 +183,56 @@ export default function Composer() {
           </div>
 
           {/* Details */}
-          <div className="border border-white/10 bg-[#0A0A0B] p-6 space-y-4">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">Details</p>
+          <div className="vg-panel bg-ink-900 p-6 space-y-4">
+            <p className="vg-label text-[10px] font-semibold text-white/50">Details</p>
             <input data-testid="post-title-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Post title *"
-              className="w-full h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+              className="w-full h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
             <textarea data-testid="post-caption-input" value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} placeholder="Caption" rows={2}
-              className="w-full bg-[#111113] border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+              className="w-full bg-ink-800 border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
             <textarea data-testid="post-description-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={3}
-              className="w-full bg-[#111113] border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+              className="w-full bg-ink-800 border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input data-testid="post-hashtags-input" value={form.hashtags} onChange={(e) => setForm({ ...form, hashtags: e.target.value })} placeholder="Hashtags (comma separated)"
-                className="h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+                className="h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
               <input data-testid="post-tags-input" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="Tags (comma separated)"
-                className="h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+                className="h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
             </div>
           </div>
 
           {/* AI assist */}
-          <div className="border border-white/10 bg-[#0A0A0B] p-6">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">AI Copywriter</p>
+          <div className="vg-panel bg-ink-900 p-6">
+            <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">AI Copywriter</p>
             <div className="flex gap-3">
               {/* min-w-0: an input keeps a default intrinsic width and will not
                   shrink inside a flex row without it. */}
               <input data-testid="ai-topic-input" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="What is this content about? e.g. '5 morning habits for productivity'"
-                className="flex-1 min-w-0 h-11 bg-[#111113] border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+                className="flex-1 min-w-0 h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
               <button data-testid="ai-generate-button" onClick={generateAI} disabled={aiBusy}
-                className="h-11 px-5 shrink-0 bg-white text-black rounded-md text-sm font-medium flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-50">
+                className="h-11 px-5 shrink-0 vg-btn vg-btn-primary rounded-md text-sm font-medium flex items-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-50">
                 {aiBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Generate
               </button>
             </div>
           </div>
 
           {/* Schedule */}
-          <div className="border border-white/10 bg-[#0A0A0B] p-6 space-y-4">
+          <div className="vg-panel bg-ink-900 p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">Scheduling</p>
+              <p className="vg-label text-[10px] font-semibold text-white/50">Scheduling</p>
               <button data-testid="schedule-toggle" onClick={() => setSchedule((s) => ({ ...s, enabled: !s.enabled }))}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors duration-200 ${schedule.enabled ? "bg-white text-black border-white" : "border-white/20 text-white/60 hover:text-white"}`}>
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors duration-200 ${schedule.enabled ? "vg-btn vg-btn-primary border-white" : "border-white/20 text-white/60 hover:text-white"}`}>
                 {schedule.enabled ? "Scheduled mode" : "Publish immediately"}
               </button>
             </div>
             {schedule.enabled && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <input data-testid="schedule-datetime-input" type="datetime-local" value={schedule.datetime} onChange={(e) => setSchedule({ ...schedule, datetime: e.target.value })}
-                  className="h-11 bg-[#111113] border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                  className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40 [color-scheme:dark]" />
                 <select data-testid="schedule-timezone-select" value={schedule.timezone} onChange={(e) => setSchedule({ ...schedule, timezone: e.target.value })}
-                  className="h-11 bg-[#111113] border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
+                  className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
                   {[...new Set([schedule.timezone, ...TIMEZONES])].map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <select data-testid="schedule-recurrence-select" value={schedule.recurrence} onChange={(e) => setSchedule({ ...schedule, recurrence: e.target.value })}
-                  className="h-11 bg-[#111113] border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
+                  className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
                   <option value="none">One-time</option>
                   <option value="daily">Recurring · Daily</option>
                   <option value="weekly">Recurring · Weekly</option>
@@ -247,9 +247,9 @@ export default function Composer() {
         <div className="lg:col-span-2 space-y-6">
           {/* Actions — kept in the sidebar and pinned, so publishing is always
               one click away instead of a scroll to the bottom of the form. */}
-          <div className="border border-white/10 bg-[#0A0A0B] p-5 lg:sticky lg:top-6 z-10">
+          <div className="vg-panel bg-ink-900 p-5 lg:sticky lg:top-6 z-10">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50">Publish</p>
+              <p className="vg-label text-[10px] font-semibold text-white/50">Publish</p>
               <span className="text-[10px] text-white/35">
                 {selected.length === 0
                   ? "no platform selected"
@@ -265,7 +265,7 @@ export default function Composer() {
                 </button>
               ) : (
                 <button data-testid="publish-now-button" onClick={() => submit("publish")} disabled={!!submitting}
-                  className="w-full h-12 px-5 bg-white text-black rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0">
+                  className="w-full h-12 px-5 vg-btn vg-btn-primary rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0">
                   {submitting === "publish" ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />} Publish Now
                 </button>
               )}
@@ -282,8 +282,8 @@ export default function Composer() {
               </p>
             )}
           </div>
-          <div className="border border-white/10 bg-[#0A0A0B] p-6">
-            <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Platforms</p>
+          <div className="vg-panel bg-ink-900 p-6">
+            <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">Platforms</p>
             <div className="space-y-1">
               {Object.entries(PLATFORM_META).map(([id, { name, Icon, color }]) => {
                 const isConn = connected.has(id);
@@ -311,7 +311,7 @@ export default function Composer() {
                     </label>
                     <input data-testid={`override-caption-${id}`} value={overrides[id]?.caption || ""} placeholder="Uses main caption if empty"
                       onChange={(e) => setOverrides({ ...overrides, [id]: { caption: e.target.value } })}
-                      className="w-full h-9 bg-[#111113] border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
+                      className="w-full h-9 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
                   </div>
                 ))}
               </div>
@@ -319,8 +319,8 @@ export default function Composer() {
           </div>
 
           {validations.length > 0 && (
-            <div data-testid="quality-validation-panel" className="border border-white/10 bg-[#0A0A0B] p-6">
-              <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-4">Quality Validation</p>
+            <div data-testid="quality-validation-panel" className="vg-panel bg-ink-900 p-6">
+              <p className="vg-label text-[10px] font-semibold text-white/50 mb-4">Quality Validation</p>
               <div className="space-y-4">
                 {validations.map((v) => {
                   const M = PLATFORM_META[v.platform];

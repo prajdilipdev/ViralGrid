@@ -1,27 +1,4 @@
-/* Space Grotesk is loaded via <link> in public/index.html — a stylesheet
-   @import here would block rendering until it resolves. */
-
-body {
-  background-color: #050505;
-  color: #ffffff;
-}
-
-::selection {
-  background: rgba(255, 255, 255, 0.9);
-  color: #050505;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #0a0a0b;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
+/* Theme tokens, fonts, grain, panels, buttons, motion and the scrollbar /
+   selection / focus treatments all live in index.css so they resolve from a
+   single source. Fonts are loaded via <link> in public/index.html — a
+   stylesheet @import here would block rendering until it resolves. */

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { BackendStatusProvider } from "./context/BackendStatus";
+import { ThemeProvider } from "./context/ThemeContext";
 import { Toaster } from "sonner";
 import Layout from "./components/Layout";
 import ServerStatusBar from "./components/ServerStatusBar";
@@ -24,7 +25,7 @@ const Protected = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-ink-950 flex items-center justify-center">
         <div className="text-white/50 text-xs tracking-[0.2em] uppercase animate-pulse">Loading…</div>
       </div>
     );
@@ -63,17 +64,21 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <BackendStatusProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          {/* A render error in one page must not take the whole app down. */}
-          <ErrorBoundary>
-            <AppRouter />
-          </ErrorBoundary>
-          <ServerStatusBar />
-          <Toaster theme="dark" position="bottom-right" richColors />
-        </BrowserRouter>
-      </AuthProvider>
-    </BackendStatusProvider>
+    <ThemeProvider>
+      <BackendStatusProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            {/* A render error in one page must not take the whole app down. */}
+            <ErrorBoundary>
+              <AppRouter />
+            </ErrorBoundary>
+            <ServerStatusBar />
+            <Toaster position="bottom-right" richColors />
+            {/* Film grain sits above everything, ignores pointer events. */}
+            <div className="vg-grain" aria-hidden="true" />
+          </BrowserRouter>
+        </AuthProvider>
+      </BackendStatusProvider>
+    </ThemeProvider>
   );
 }

@@ -12,11 +12,11 @@ import { PenSquare, ArrowUpRight, Clock, FileText, CheckCircle2, Eye, XCircle } 
 const StatCard = ({ label, value, exact, icon: Icon, testid, index = 0 }) => (
   <div
     data-testid={testid}
-    className="border-r border-b border-white/5 bg-[#0A0A0B] p-6 min-w-0 vg-fade-up"
+    className="border-r border-b border-white/5 bg-ink-900 p-6 min-w-0 vg-fade-up"
     style={{ "--vg-stagger": `${index * 45}ms` }}
   >
     <div className="flex items-center justify-between gap-2">
-      <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 truncate">{label}</p>
+      <p className="vg-label text-[10px] font-semibold text-white/50 truncate">{label}</p>
       <Icon size={15} className="text-white/30 shrink-0" />
     </div>
     {/* truncate: a long figure has no break point and would otherwise widen the grid */}
@@ -55,12 +55,12 @@ export default function Dashboard() {
     <div data-testid="dashboard-page" className="p-6 sm:p-8">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p className="text-xs tracking-[0.2em] uppercase font-semibold text-white/50 mb-2">Command Center</p>
-          <h1 className="text-3xl sm:text-4xl tracking-tighter font-light" style={{ fontFamily: "Space Grotesk" }}>Dashboard</h1>
+          <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Command Center</p>
+          <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light">Dashboard</h1>
         </div>
         <div className="flex items-center gap-2">
           <SyncButton onDone={load} />
-          <Link to="/composer" data-testid="dashboard-new-post-button" className="bg-white text-black px-5 h-11 rounded-md flex items-center gap-2 text-sm font-medium transition-transform duration-200 hover:-translate-y-0.5">
+          <Link to="/composer" data-testid="dashboard-new-post-button" className="vg-btn vg-btn-primary px-5 h-11 rounded-md flex items-center gap-2 text-sm font-medium transition-transform duration-200 hover:-translate-y-0.5">
             <PenSquare size={15} /> New Post
           </Link>
         </div>
@@ -78,7 +78,7 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        <div className="lg:col-span-2 border border-white/10 bg-[#0A0A0B]">
+        <div className="lg:col-span-2 vg-panel bg-ink-900">
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
             <h3 className="text-sm font-medium tracking-tight">Recent Posts</h3>
             <Link to="/history" data-testid="dashboard-view-history-link" className="text-xs text-white/50 hover:text-white flex items-center gap-1 transition-colors duration-200">
@@ -91,7 +91,7 @@ export default function Dashboard() {
             <ErrorState what="your dashboard" error={error} onRetry={load} />
           ) : posts.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-2xl font-light text-white/30 tracking-tight" style={{ fontFamily: "Space Grotesk" }}>Nothing published yet.</p>
+              <p className="text-2xl font-light text-white/30 tracking-tight">Nothing published yet.</p>
               <p className="text-sm text-white/40 mt-2">Create your first post to see it here.</p>
             </div>
           ) : (
@@ -114,7 +114,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-6">
-          <div className="border border-white/10 bg-[#0A0A0B]">
+          <div className="vg-panel bg-ink-900">
             <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-sm font-medium tracking-tight">Platform Status</h3>
               <Link to="/connections" data-testid="dashboard-manage-connections-link" className="text-xs text-white/50 hover:text-white transition-colors duration-200">Manage</Link>
@@ -131,7 +131,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="border border-white/10 bg-[#0A0A0B]">
+          <div className="vg-panel bg-ink-900">
             <div className="px-6 py-4 border-b border-white/10">
               <h3 className="text-sm font-medium tracking-tight">Up Next</h3>
             </div>

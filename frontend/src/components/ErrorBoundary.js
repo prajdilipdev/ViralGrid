@@ -25,8 +25,8 @@ export default class ErrorBoundary extends React.Component {
     if (!this.state.error) return this.props.children;
 
     return (
-      <div data-testid="error-boundary" className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-6">
-        <div className="max-w-md w-full border border-white/10 bg-[#0A0A0B] rounded-md p-6">
+      <div data-testid="error-boundary" className="min-h-screen bg-ink-950 text-white flex items-center justify-center p-6">
+        <div className="max-w-md w-full vg-panel bg-ink-900 rounded-md p-6">
           <div className="flex items-center gap-3 mb-3">
             <AlertTriangle size={18} className="text-amber-400 shrink-0" />
             <h1 className="text-lg font-semibold tracking-tight">Something broke on this screen</h1>
@@ -41,7 +41,7 @@ export default class ErrorBoundary extends React.Component {
           <div className="flex gap-2 mt-5">
             <button
               onClick={() => this.setState({ error: null })}
-              className="flex-1 h-10 bg-white text-black rounded-md text-xs font-medium flex items-center justify-center gap-2"
+              className="flex-1 h-10 vg-btn vg-btn-primary rounded-md text-xs font-medium flex items-center justify-center gap-2"
             >
               <RotateCw size={13} /> Try again
             </button>
