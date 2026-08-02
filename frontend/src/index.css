@@ -39,7 +39,11 @@
          ink on fill #8E9900          -> 6.33:1  (AA text) */
     --vg-signal: 107 115 0; /* accent as foreground */
     --vg-signal-fill: 142 153 0; /* signal-deep as a fill */
-    --vg-grain-opacity: 0.5; /* grain reads much lighter on paper */
+    /* The grain layer is fixed over the whole viewport at z-index 9999, so it
+       sits on top of text as well as background. At 0.5 it measurably ate into
+       the contrast the colours above were tuned for; 0.12 keeps the paper
+       texture without dulling content. */
+    --vg-grain-opacity: 0.12;
     --vg-glow-strength: 0.05;
     --vg-panel-top-light: 0;
 }
@@ -52,13 +56,20 @@
    meta), not just decoration, so all are held to the 4.5:1 AA floor rather
    than the 3:1 large-text/UI one. Paper (243 241 236) is the worst case —
    white cards sit higher — so the alphas are solved against paper. The
-   0.58-0.68 band is narrow, but hierarchy still reads because primary text
-   sits at full alpha (16.9:1), well clear of the whole muted range. */
-.light .text-white\/50 { color: rgb(var(--vg-fg) / 0.68); }
-.light .text-white\/45 { color: rgb(var(--vg-fg) / 0.66); }
-.light .text-white\/40 { color: rgb(var(--vg-fg) / 0.64); }
-.light .text-white\/35 { color: rgb(var(--vg-fg) / 0.6); }
-.light .text-white\/30 { color: rgb(var(--vg-fg) / 0.58); }
+   0.62-0.70 band is narrow, but hierarchy still reads because primary text
+   sits at full alpha (16.9:1), well clear of the whole muted range.
+   These include headroom for the grain layer overhead described above:
+   rasterising the noise gives a mean of rgb(186 186 186) at alpha 0.5, so at
+   0.12 element opacity it washes ~6% grey over both text and background and
+   costs roughly 0.4 off every ratio. Solved with that included, so the
+   figures here are what actually reaches the eye, not bare colour maths. */
+.light .text-white\/70 { color: rgb(var(--vg-fg) / 0.8); }
+.light .text-white\/60 { color: rgb(var(--vg-fg) / 0.74); }
+.light .text-white\/50 { color: rgb(var(--vg-fg) / 0.7); }
+.light .text-white\/45 { color: rgb(var(--vg-fg) / 0.68); }
+.light .text-white\/40 { color: rgb(var(--vg-fg) / 0.66); }
+.light .text-white\/35 { color: rgb(var(--vg-fg) / 0.64); }
+.light .text-white\/30 { color: rgb(var(--vg-fg) / 0.62); }
 
 /* Status colours are Tailwind's -400 shades, tuned for near-black surfaces.
    On white cards they collapse to 1.7-2.8:1, so light mode drops to the -700
@@ -66,24 +77,24 @@
    on purpose: those are solid buttons carrying black text, which works in
    both themes for the same reason the signal button does. */
 .light .text-emerald-400,
-.light .text-emerald-300 { color: #047857; }
-.light .text-amber-400 { color: #b45309; }
+.light .text-emerald-300 { color: #065f46; }
+.light .text-amber-400,
 .light .text-amber-200\/90 { color: #92400e; }
 .light .text-red-400,
 .light .text-red-400\/80,
 .light .text-red-300 { color: #b91c1c; }
-.light .text-orange-400 { color: #c2410c; }
+.light .text-orange-400 { color: #9a3412; }
 .light .text-blue-400 { color: #1d4ed8; }
 /* Connected/status dots are non-text UI: 3:1 is the bar, -600 clears it. */
 .light .bg-emerald-400 { background-color: #059669; }
 
 /* Badge outlines follow their label so each pill stays visually coherent. */
-.light .border-emerald-400\/40 { border-color: rgb(4 120 87 / 0.45); }
-.light .border-emerald-400\/20 { border-color: rgb(4 120 87 / 0.3); }
-.light .border-amber-400\/40 { border-color: rgb(180 83 9 / 0.45); }
-.light .border-amber-400\/25 { border-color: rgb(180 83 9 / 0.3); }
+.light .border-emerald-400\/40 { border-color: rgb(6 95 70 / 0.45); }
+.light .border-emerald-400\/20 { border-color: rgb(6 95 70 / 0.3); }
+.light .border-amber-400\/40 { border-color: rgb(146 64 14 / 0.45); }
+.light .border-amber-400\/25 { border-color: rgb(146 64 14 / 0.3); }
 .light .border-red-400\/40 { border-color: rgb(185 28 28 / 0.45); }
-.light .border-orange-400\/40 { border-color: rgb(194 65 12 / 0.45); }
+.light .border-orange-400\/40 { border-color: rgb(154 52 18 / 0.45); }
 .light .border-blue-400\/40 { border-color: rgb(29 78 216 / 0.45); }
 
 /* ---------- Page background: fixed so glows don't scroll ---------- */
