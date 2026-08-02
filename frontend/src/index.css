@@ -37,6 +37,19 @@
     --vg-panel-top-light: 0;
 }
 
+/* Text opacity tiers (text-white/NN) lose far more contrast against a light
+   background than the same alpha does against ink-950 — contrast ratio isn't
+   symmetric with opacity. Recalibrated per-tier against paper (243 241 236)
+   rather than matching dark mode's felt weight, since /35 and /30 already
+   failed WCAG in dark mode too. Measured via relative-luminance contrast:
+     /50, /40 -> 60% alpha  = 4.8:1  (AA text)
+     /35      -> 50% alpha  = 3.5:1  (AA large-text/UI only)
+     /30      -> 45% alpha  = 3.0:1  (AA large-text/UI only) */
+.light .text-white\/50 { color: rgb(var(--vg-fg) / 0.6); }
+.light .text-white\/40 { color: rgb(var(--vg-fg) / 0.6); }
+.light .text-white\/35 { color: rgb(var(--vg-fg) / 0.5); }
+.light .text-white\/30 { color: rgb(var(--vg-fg) / 0.45); }
+
 /* ---------- Page background: fixed so glows don't scroll ---------- */
 body {
     background-color: rgb(var(--vg-bg));

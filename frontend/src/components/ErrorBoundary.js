@@ -35,7 +35,7 @@ export default class ErrorBoundary extends React.Component {
             The rest of the app is fine — this page hit an error while drawing. Your posts and
             connections are unaffected.
           </p>
-          <p className="text-[11px] text-white/35 mt-3 font-mono break-words">
+          <p className="text-[11px] text-white/40 mt-3 font-mono break-words">
             {String(this.state.error?.message || this.state.error).slice(0, 200)}
           </p>
           <div className="flex gap-2 mt-5">
