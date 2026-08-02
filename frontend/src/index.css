@@ -71,6 +71,21 @@
 .light .text-white\/35 { color: rgb(var(--vg-fg) / 0.64); }
 .light .text-white\/30 { color: rgb(var(--vg-fg) / 0.62); }
 
+/* Dark mode has the same problem at its dim end, and always did — these tiers
+   were failing AA before light mode existed. On near-black, AA small text needs
+   ~48% alpha (solved against ink-800, the lightest dark surface, with the 3%
+   grain counted), so anything below that cannot pass no matter how it's tuned.
+   /70, /60 and /50 already clear it and are left exactly as designed; the four
+   tiers under them necessarily converge on one value. That does flatten the
+   dim end of the hierarchy, but the alternative is text that fails AA — the
+   spread it used to have was never real contrast, only apparent dimness.
+   Scoped with :not(.light) rather than .dark so it also holds for the first
+   paint, before ThemeContext has attached the class. */
+:root:not(.light) .text-white\/45,
+:root:not(.light) .text-white\/40,
+:root:not(.light) .text-white\/35,
+:root:not(.light) .text-white\/30 { color: rgb(var(--vg-fg) / 0.49); }
+
 /* Status colours are Tailwind's -400 shades, tuned for near-black surfaces.
    On white cards they collapse to 1.7-2.8:1, so light mode drops to the -700
    shades (all >= 4.5:1 on both white and paper). `bg-amber-400` is left alone
