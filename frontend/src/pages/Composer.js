@@ -226,7 +226,7 @@ export default function Composer() {
             {schedule.enabled && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <input data-testid="schedule-datetime-input" type="datetime-local" value={schedule.datetime} onChange={(e) => setSchedule({ ...schedule, datetime: e.target.value })}
-                  className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                  className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40" />
                 <select data-testid="schedule-timezone-select" value={schedule.timezone} onChange={(e) => setSchedule({ ...schedule, timezone: e.target.value })}
                   className="h-11 bg-ink-800 border border-white/10 rounded-md px-3 text-sm focus:outline-none focus:border-white/40">
                   {[...new Set([schedule.timezone, ...TIMEZONES])].map((t) => <option key={t} value={t}>{t}</option>)}

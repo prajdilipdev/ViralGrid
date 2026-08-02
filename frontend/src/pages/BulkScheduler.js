@@ -453,7 +453,7 @@ Product launch,"Available now","launch,new",media_def456,instagram_reels,2026-02
                     <td className="px-4 py-3">
                       <input data-testid={`row-datetime-${i}`} type="datetime-local" value={r.scheduled_at}
                         onChange={(e) => updateRow(r.key, { scheduled_at: e.target.value })}
-                        className="h-8 bg-ink-800 border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                        className="h-8 bg-ink-800 border border-white/10 rounded px-2 text-xs focus:outline-none focus:border-white/40" />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -525,12 +525,12 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
             <div>
               <label className="text-[10px] uppercase text-white/40 block mb-1">Start date</label>
               <input data-testid="pattern-start-date" type="date" value={pattern.startDate} onChange={(e) => setPattern({ ...pattern, startDate: e.target.value })}
-                className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
             </div>
             <div>
               <label className="text-[10px] uppercase text-white/40 block mb-1">End date</label>
               <input data-testid="pattern-end-date" type="date" value={pattern.endDate} onChange={(e) => setPattern({ ...pattern, endDate: e.target.value })}
-                className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+                className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
             </div>
           </div>
           <div>
@@ -555,7 +555,7 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
                 <div key={i} className="flex items-center gap-1 bg-ink-800 border border-white/10 rounded-md px-2 h-9">
                   <input data-testid={`pattern-time-${i}`} type="time" value={t}
                     onChange={(e) => setPattern({ ...pattern, times: pattern.times.map((x, j) => (j === i ? e.target.value : x)) })}
-                    className="bg-transparent text-xs w-24 focus:outline-none [color-scheme:dark]" />
+                    className="bg-transparent text-xs w-24 focus:outline-none" />
                   <button onClick={() => setPattern({ ...pattern, times: pattern.times.filter((_, j) => j !== i) })}
                     className="text-white/40 hover:text-red-400 transition-colors duration-200"><Trash2 size={12} /></button>
                 </div>
@@ -572,7 +572,7 @@ function SlotTemplateBlock({ mode, setMode, pattern, setPattern, interval, setIn
           <div className="sm:col-span-2">
             <label className="text-[10px] uppercase text-white/40 block mb-1">Start date & time</label>
             <input data-testid="interval-start" type="datetime-local" value={interval.startDatetime} onChange={(e) => setInterval({ ...interval, startDatetime: e.target.value })}
-              className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40 [color-scheme:dark]" />
+              className="w-full h-10 bg-ink-800 border border-white/10 rounded-md px-3 text-xs focus:outline-none focus:border-white/40" />
           </div>
           <div>
             <label className="text-[10px] uppercase text-white/40 block mb-1">Every</label>

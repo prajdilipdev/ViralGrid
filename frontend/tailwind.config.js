@@ -15,11 +15,15 @@ module.exports = {
       colors: {
         // --- Editorial control room palette -------------------------------
         // Warm olive-tinted near-blacks, not blue/neutral grays.
+        // Surfaces resolve through theme variables for the same reason `white`
+        // does below: these are the *roles* (page, card, recessed input,
+        // hairline), not fixed colours. Left as static hex they stayed dark in
+        // light mode while the text flipped to near-black — invisible content.
         ink: {
-          950: '#0A0A09',
-          900: '#111110',
-          800: '#181916',
-          700: '#232420',
+          950: 'rgb(var(--vg-bg) / <alpha-value>)',        // page background
+          900: 'rgb(var(--vg-panel) / <alpha-value>)',     // cards, panels
+          800: 'rgb(var(--vg-elevated) / <alpha-value>)',  // inputs, recessed
+          700: 'rgb(var(--vg-hairline) / <alpha-value>)',  // hairlines
           600: '#30322C',
         },
         paper: {

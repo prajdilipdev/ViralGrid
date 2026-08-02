@@ -8,9 +8,11 @@
    user can choose rather than being bound to the OS preference.
    ============================================================ */
 :root {
+    color-scheme: dark; /* native controls: date pickers, form widgets */
     --vg-fg: 244 243 236; /* paper — drives text-white/*, border-white/* */
     --vg-bg: 10 10 9; /* ink-950 */
     --vg-panel: 17 17 16; /* ink-900 */
+    --vg-elevated: 24 25 22; /* ink-800 — inputs, recessed surfaces */
     --vg-hairline: 35 36 32; /* ink-700 */
     --vg-signal: 238 255 0; /* accent as foreground: focus, ticks, indicators */
     --vg-signal-fill: 238 255 0; /* accent as a fill with dark text on top */
@@ -20,10 +22,15 @@
 }
 
 .light {
+    color-scheme: light;
     --vg-fg: 16 16 14; /* near-black ink on paper */
     --vg-bg: 243 241 236; /* warm paper */
     --vg-panel: 255 255 255; /* plain white cards */
-    --vg-hairline: 0 0 0;
+    --vg-elevated: 237 235 228; /* inputs sit slightly recessed from paper */
+    /* Warm grey, not pure black: this also paints the scrollbar thumb, and
+       rgb(0 0 0) there was a hard black bar on paper. Panel borders don't use
+       it in light mode — `.light .vg-panel` sets its own black/10 hairline. */
+    --vg-hairline: 214 211 203;
     /* Two accent tokens in light mode, because one value cannot serve both
        directions: #8E9900 as foreground on paper measures only 2.77:1 (fails
        WCAG AA), while a value dark enough to pass leaves too little contrast
@@ -37,18 +44,47 @@
     --vg-panel-top-light: 0;
 }
 
-/* Text opacity tiers (text-white/NN) lose far more contrast against a light
+/* ---------- Light-mode contrast corrections ----------
+   Text opacity tiers (text-white/NN) lose far more contrast against a light
    background than the same alpha does against ink-950 — contrast ratio isn't
-   symmetric with opacity. Recalibrated per-tier against paper (243 241 236)
-   rather than matching dark mode's felt weight, since /35 and /30 already
-   failed WCAG in dark mode too. Measured via relative-luminance contrast:
-     /50, /40 -> 60% alpha  = 4.8:1  (AA text)
-     /35      -> 50% alpha  = 3.5:1  (AA large-text/UI only)
-     /30      -> 45% alpha  = 3.0:1  (AA large-text/UI only) */
-.light .text-white\/50 { color: rgb(var(--vg-fg) / 0.6); }
-.light .text-white\/40 { color: rgb(var(--vg-fg) / 0.6); }
-.light .text-white\/35 { color: rgb(var(--vg-fg) / 0.5); }
-.light .text-white\/30 { color: rgb(var(--vg-fg) / 0.45); }
+   symmetric with opacity. Every one of these tiers carries real small
+   informational text somewhere (timestamps, hints, legal footers, 9-12px
+   meta), not just decoration, so all are held to the 4.5:1 AA floor rather
+   than the 3:1 large-text/UI one. Paper (243 241 236) is the worst case —
+   white cards sit higher — so the alphas are solved against paper. The
+   0.58-0.68 band is narrow, but hierarchy still reads because primary text
+   sits at full alpha (16.9:1), well clear of the whole muted range. */
+.light .text-white\/50 { color: rgb(var(--vg-fg) / 0.68); }
+.light .text-white\/45 { color: rgb(var(--vg-fg) / 0.66); }
+.light .text-white\/40 { color: rgb(var(--vg-fg) / 0.64); }
+.light .text-white\/35 { color: rgb(var(--vg-fg) / 0.6); }
+.light .text-white\/30 { color: rgb(var(--vg-fg) / 0.58); }
+
+/* Status colours are Tailwind's -400 shades, tuned for near-black surfaces.
+   On white cards they collapse to 1.7-2.8:1, so light mode drops to the -700
+   shades (all >= 4.5:1 on both white and paper). `bg-amber-400` is left alone
+   on purpose: those are solid buttons carrying black text, which works in
+   both themes for the same reason the signal button does. */
+.light .text-emerald-400,
+.light .text-emerald-300 { color: #047857; }
+.light .text-amber-400 { color: #b45309; }
+.light .text-amber-200\/90 { color: #92400e; }
+.light .text-red-400,
+.light .text-red-400\/80,
+.light .text-red-300 { color: #b91c1c; }
+.light .text-orange-400 { color: #c2410c; }
+.light .text-blue-400 { color: #1d4ed8; }
+/* Connected/status dots are non-text UI: 3:1 is the bar, -600 clears it. */
+.light .bg-emerald-400 { background-color: #059669; }
+
+/* Badge outlines follow their label so each pill stays visually coherent. */
+.light .border-emerald-400\/40 { border-color: rgb(4 120 87 / 0.45); }
+.light .border-emerald-400\/20 { border-color: rgb(4 120 87 / 0.3); }
+.light .border-amber-400\/40 { border-color: rgb(180 83 9 / 0.45); }
+.light .border-amber-400\/25 { border-color: rgb(180 83 9 / 0.3); }
+.light .border-red-400\/40 { border-color: rgb(185 28 28 / 0.45); }
+.light .border-orange-400\/40 { border-color: rgb(194 65 12 / 0.45); }
+.light .border-blue-400\/40 { border-color: rgb(29 78 216 / 0.45); }
 
 /* ---------- Page background: fixed so glows don't scroll ---------- */
 body {
