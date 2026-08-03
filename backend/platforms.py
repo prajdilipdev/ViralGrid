@@ -9,7 +9,13 @@ PLATFORM_SPECS = {
         # Instagram accepts up to 1GB for Reels. The old 250MB figure forced a
         # re-encode of large, already-correct videos, throwing away quality
         # Instagram never asked us to discard.
-        "max_duration": 90, "max_size_mb": 1000, "caption_limit": 2200, "hashtag_limit": 30,
+        # 900s is the API's actual ceiling (Meta documents Reels as 3s-15min).
+        # The old 90s figure wasn't the API limit though — it's the window in
+        # which a 9:16 video is eligible for the Reels *tab*. Past it the post
+        # still publishes, just as a regular video rather than a Reel. That's a
+        # trade worth making knowingly, so it's a warning below, not a block.
+        "max_duration": 900, "reels_tab_max_duration": 90,
+        "max_size_mb": 1000, "caption_limit": 2200, "hashtag_limit": 30,
         # 12000 rather than 8000: measured SSIM 0.9988 vs 0.9969 against the
         # source, for no extra encode time. Instagram re-compresses anyway, so
         # the aim is to hand it the cleanest input we can.
@@ -57,8 +63,15 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
     needs_transform = False
     if media.get("type") == "video":
         dur = media.get("duration") or 0
+        reels_tab_max = spec.get("reels_tab_max_duration")
         if dur > spec["max_duration"]:
             checks.append({"level": "error", "message": f"Duration {int(dur)}s exceeds {spec['max_duration']}s limit"})
+        elif reels_tab_max and dur > reels_tab_max:
+            # Publishes fine, but lands as a video post instead of in the Reels tab.
+            checks.append({"level": "warn", "message": (
+                f"Duration {int(dur)}s is over {reels_tab_max}s — this will publish "
+                f"as a regular video post, not in the Reels tab"
+            )})
         else:
             checks.append({"level": "ok", "message": f"Duration {int(dur)}s within {spec['max_duration']}s limit"})
 
