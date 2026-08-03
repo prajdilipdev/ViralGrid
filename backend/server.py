@@ -188,8 +188,18 @@ async def logout(request: Request, response: Response):
 @api.get("/health")
 async def health():
     """Cheap unauthenticated ping — used by the frontend to wake a sleeping
-    free-tier instance and to show a 'server starting' indicator."""
-    return {"ok": True, "instagram": instagram.is_configured()}
+    free-tier instance and to show a 'server starting' indicator.
+
+    Also reports the commit it is running, because without it there is no way
+    to tell a deployed backend change from a stale container: authenticated
+    routes answer 401 either way, and a missing route falls through to an
+    existing one rather than 404ing. Render injects RENDER_GIT_COMMIT itself.
+    """
+    return {
+        "ok": True,
+        "instagram": instagram.is_configured(),
+        "commit": (os.environ.get("RENDER_GIT_COMMIT") or "local")[:7],
+    }
 
 
 # ---------- Platform connections (simulated) ----------
@@ -617,11 +627,14 @@ async def _publish_post(post: dict):
                 continue
             if media["type"] == "video" and optimization["transform"] != "passthrough":
                 spec = PLATFORM_SPECS[platform]
-                key = (spec["width"], spec["height"], spec["video_bitrate_k"])
+                # Same value the plan reports, so History doesn't claim a
+                # bitrate the file was never encoded at.
+                bitrate_k = optimization["bitrate_kbps"]
+                key = (spec["width"], spec["height"], bitrate_k)
                 if key not in transcode_cache:
                     out_name = f"{post['post_id']}_{spec['width']}x{spec['height']}.mp4"
                     _t0 = time.monotonic()
-                    transcode_cache[key] = await transcode_video(str(UPLOAD_DIR / media["filename"]), out_name, spec["width"], spec["height"], spec["video_bitrate_k"])
+                    transcode_cache[key] = await transcode_video(str(UPLOAD_DIR / media["filename"]), out_name, spec["width"], spec["height"], bitrate_k)
                     logger.info(
                         f"ffmpeg transcode -> {spec['width']}x{spec['height']} "
                         f"took {time.monotonic() - _t0:.1f}s for {post['post_id']}"

@@ -6,16 +6,19 @@ PLATFORM_SPECS = {
     },
     "instagram_reels": {
         "name": "Instagram Reels", "aspect": "9:16", "width": 1080, "height": 1920,
-        # Instagram accepts up to 1GB for Reels. The old 250MB figure forced a
-        # re-encode of large, already-correct videos, throwing away quality
-        # Instagram never asked us to discard.
+        # 300MB, not the 1GB this used to claim. Meta's Reel specs state
+        # "File size: 300MB maximum" with no exemption for the hosted-URL
+        # method we use, so 1000 meant a large video passed validation here and
+        # was then rejected by Instagram — a worse failure, and further from the
+        # upload. Re-encoding a >300MB video isn't the wasted work the old
+        # comment assumed; it's the only way it publishes at all.
         # 900s is the API's actual ceiling (Meta documents Reels as 3s-15min).
         # The old 90s figure wasn't the API limit though — it's the window in
         # which a 9:16 video is eligible for the Reels *tab*. Past it the post
         # still publishes, just as a regular video rather than a Reel. That's a
         # trade worth making knowingly, so it's a warning below, not a block.
         "max_duration": 900, "reels_tab_max_duration": 90,
-        "max_size_mb": 1000, "caption_limit": 2200, "hashtag_limit": 30,
+        "max_size_mb": 300, "caption_limit": 2200, "hashtag_limit": 30,
         # 12000 rather than 8000: measured SSIM 0.9988 vs 0.9969 against the
         # source, for no extra encode time. Instagram re-compresses anyway, so
         # the aim is to hand it the cleanest input we can.
@@ -55,6 +58,31 @@ PLATFORM_SPECS = {
 # than sent through untouched. ffprobe reports HEVC as "hevc".
 ACCEPTED_VIDEO_CODECS = {"h264", "hevc"}
 ACCEPTED_AUDIO_CODECS = {"aac"}
+
+# Must match the AAC bitrate transcode_video actually encodes at, or the size
+# budget below under-counts and the output overshoots the platform's cap.
+AUDIO_BITRATE_K = 256
+
+
+def effective_bitrate_k(spec: dict, duration_s: float | None) -> int:
+    """Video bitrate that still fits the platform's file-size cap.
+
+    `video_bitrate_k` is a quality target, not a promise about the resulting
+    size. At 12000k a video passes 300MB somewhere around 200s, so once Reels
+    could be up to 15 minutes a fixed bitrate meant the re-encode produced a
+    file the platform rejects — the transform meant to fix an oversized upload
+    was itself producing one. Below the crossover nothing changes; past it
+    quality gives way rather than the upload failing.
+    """
+    target = spec["video_bitrate_k"]
+    if not duration_s or duration_s <= 0:
+        return target
+    # 5% headroom for container/muxing overhead on top of the raw stream rate.
+    budget_kbit = spec["max_size_mb"] * 1024 * 8 * 0.95
+    allowed = int(budget_kbit / duration_s) - AUDIO_BITRATE_K
+    # Never drop below something watchable, even if that overshoots the cap —
+    # an unwatchable file that fits is not a better outcome than a clear error.
+    return max(1000, min(target, allowed))
 
 
 def validate_media_for_platform(media: dict, platform: str) -> dict:
@@ -113,7 +141,7 @@ def build_optimization_plan(media: dict, platform: str) -> dict:
         "target_resolution": f"{spec['width']}x{spec['height']}",
         "target_aspect": spec["aspect"],
         "codec": spec["codec"],
-        "bitrate_kbps": spec["video_bitrate_k"],
+        "bitrate_kbps": effective_bitrate_k(spec, media.get("duration")),
         "transform": "pad_and_scale" if validation["needs_transform"] else "passthrough",
         "quality_preserved": not validation["needs_transform"],
     }
