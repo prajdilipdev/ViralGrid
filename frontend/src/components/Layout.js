@@ -1,6 +1,6 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LayoutDashboard, PenSquare, CalendarDays, Layers, History, BarChart3, Plug, LogOut } from "lucide-react";
+import { LayoutDashboard, PenSquare, CalendarDays, Layers, History, BarChart3, Plug, LogOut, Recycle } from "lucide-react";
 import Logo from "./Logo";
 import ThemeToggle from "./ThemeToggle";
 
@@ -11,6 +11,7 @@ const NAV = [
   { to: "/bulk", label: "Bulk", icon: Layers, testid: "nav-bulk" },
   { to: "/history", label: "History", icon: History, testid: "nav-history" },
   { to: "/analytics", label: "Analytics", icon: BarChart3, testid: "nav-analytics" },
+  { to: "/refresh", label: "Refresh", icon: Recycle, testid: "nav-refresh" },
   { to: "/connections", label: "Connections", icon: Plug, testid: "nav-connections" },
 ];
 

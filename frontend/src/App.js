@@ -15,6 +15,7 @@ import CalendarPage from "./pages/CalendarPage";
 import BulkScheduler from "./pages/BulkScheduler";
 import HistoryPage from "./pages/HistoryPage";
 import Analytics from "./pages/Analytics";
+import Refresh from "./pages/Refresh";
 import Connections from "./pages/Connections";
 import Privacy from "./pages/Privacy";
 import DataDeletion from "./pages/DataDeletion";
@@ -62,6 +63,7 @@ function AppRouter() {
       <Route path="/bulk" element={<Protected><BulkScheduler /></Protected>} />
       <Route path="/history" element={<Protected><HistoryPage /></Protected>} />
       <Route path="/analytics" element={<Protected><Analytics /></Protected>} />
+      <Route path="/refresh" element={<Protected><Refresh /></Protected>} />
       <Route path="/connections" element={<Protected><Connections /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

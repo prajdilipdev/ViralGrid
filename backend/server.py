@@ -732,6 +732,108 @@ async def list_posts(status: Optional[str] = None, user: User = Depends(get_curr
     return await db.posts.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
+@api.get("/posts/underperforming")
+async def posts_underperforming(
+    days: int = 7,
+    threshold: int = 50,
+    user: User = Depends(get_current_user),
+):
+    """Published posts that have gone quiet, measured against your own median.
+
+    An absolute view count means nothing on its own — 200 views is a flop for
+    one account and a hit for another — so "underperforming" is defined
+    relative to the median of this user's own published posts.
+
+    Posts younger than `days` are excluded from both the flagged list and the
+    median: a reel published this morning has not had time to perform, and
+    including it would drag the median down and mask genuinely dead posts.
+
+    Note the caption itself cannot be edited once published — Instagram's API
+    exposes only `comment_enabled` on a published media object. So this
+    endpoint exists to tee up a manual edit, not to perform one.
+    """
+    threshold = max(1, min(100, threshold))
+    days = max(0, days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    posts = await db.posts.find(
+        {"user_id": user.user_id, "status": {"$in": ["published", "partial"]}}, {"_id": 0}
+    ).to_list(1000)
+
+    # Flatten to one row per published platform result, keeping only those old
+    # enough to have settled.
+    rows = []
+    for p in posts:
+        for plat, r in (p.get("platform_results") or {}).items():
+            if r.get("status") != "published":
+                continue
+            when = _parse_dt(r.get("published_at") or p.get("published_at") or p.get("created_at") or "")
+            if not when or when > cutoff:
+                continue
+            rows.append({
+                "post": p, "platform": plat, "result": r, "published_at": when,
+                "views": (r.get("metrics") or {}).get("views") or 0,
+            })
+
+    if not rows:
+        return {"median_views": 0, "considered": 0, "days": days,
+                "threshold": threshold, "items": [], "top_hashtags": []}
+
+    ordered = sorted(row["views"] for row in rows)
+    mid = len(ordered) // 2
+    median = ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+
+    # Hashtags that show up on the strongest posts. Frequency among top
+    # performers is a weak signal on a small account, so it is offered as a
+    # starting point rather than a recommendation.
+    strong_cut = ordered[int(len(ordered) * 0.75)] if len(ordered) >= 4 else median
+    tag_counts: Dict[str, int] = {}
+    for row in rows:
+        if row["views"] < strong_cut:
+            continue
+        for tag in (row["post"].get("hashtags") or []):
+            clean = str(tag).lstrip("#").strip()
+            if clean:
+                tag_counts[clean] = tag_counts.get(clean, 0) + 1
+    top_hashtags = [t for t, _ in sorted(tag_counts.items(), key=lambda kv: -kv[1])[:15]]
+
+    limit = median * (threshold / 100)
+    now = datetime.now(timezone.utc)
+    items = []
+    for row in rows:
+        if row["views"] >= limit:
+            continue
+        p, r = row["post"], row["result"]
+        used = [str(t).lstrip("#").strip() for t in (p.get("hashtags") or []) if str(t).strip()]
+        lowered = {t.lower() for t in used}
+        items.append({
+            "post_id": p["post_id"],
+            "title": p.get("title", ""),
+            "caption": p.get("caption", ""),
+            "hashtags": used,
+            "platform": row["platform"],
+            "platform_name": PLATFORM_SPECS.get(row["platform"], {}).get("name", row["platform"]),
+            "url": r.get("url"),
+            "views": row["views"],
+            "likes": (r.get("metrics") or {}).get("likes") or 0,
+            "published_at": row["published_at"].isoformat(),
+            "age_days": max(0, (now - row["published_at"]).days),
+            "vs_median_pct": round((row["views"] / median) * 100) if median else 0,
+            # Proven tags this post isn't already using.
+            "suggested_hashtags": [t for t in top_hashtags if t.lower() not in lowered][:10],
+        })
+
+    items.sort(key=lambda x: (x["vs_median_pct"], -x["age_days"]))
+    return {
+        "median_views": round(median, 1),
+        "considered": len(rows),
+        "days": days,
+        "threshold": threshold,
+        "items": items,
+        "top_hashtags": top_hashtags,
+    }
+
+
 @api.get("/posts/{post_id}")
 async def get_post(post_id: str, user: User = Depends(get_current_user)):
     post = await db.posts.find_one({"post_id": post_id, "user_id": user.user_id}, {"_id": 0})
