@@ -30,7 +30,13 @@ SCOPES = "instagram_business_basic,instagram_business_content_publish"
 # less often than this, so there is nothing to gain by checking harder — the
 # wait is Instagram's own transcoding, not our polling.
 POLL_INTERVAL_S = 5
-POLL_TIMEOUT_S = 150
+# Meta's own guidance: "query a container's status once per minute, for no
+# more than 5 minutes" — 300s is their documented ceiling, not ours. The
+# previous 150s gave up at the halfway point of Instagram's own stated
+# transcoding window, failing videos Instagram was still going to finish.
+# Render allows 100-minute requests and uvicorn has no request-level timeout,
+# so nothing downstream clips this short.
+POLL_TIMEOUT_S = 300
 
 
 class InstagramError(Exception):
