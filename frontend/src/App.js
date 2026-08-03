@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { BackendStatusProvider } from "./context/BackendStatus";
 import { ThemeProvider } from "./context/ThemeContext";
 import { Toaster } from "sonner";
+import { Loader2 } from "lucide-react";
 import Layout from "./components/Layout";
 import ServerStatusBar from "./components/ServerStatusBar";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -24,9 +25,14 @@ import "./App.css";
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) {
+    // The status bar carries the detail (and the wake-up timer); this just
+    // needs to not read as a dead screen while the session check runs.
     return (
       <div className="min-h-screen bg-ink-950 flex items-center justify-center">
-        <div className="text-white/50 text-xs tracking-[0.2em] uppercase animate-pulse">Loading…</div>
+        <div className="flex items-center gap-3 text-white/50">
+          <Loader2 size={14} className="animate-spin shrink-0" />
+          <span className="vg-label text-[10px] font-semibold">Restoring your session</span>
+        </div>
       </div>
     );
   }
