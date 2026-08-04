@@ -59,31 +59,6 @@ PLATFORM_SPECS = {
 ACCEPTED_VIDEO_CODECS = {"h264", "hevc"}
 ACCEPTED_AUDIO_CODECS = {"aac"}
 
-# Must match the AAC bitrate transcode_video actually encodes at, or the size
-# budget below under-counts and the output overshoots the platform's cap.
-AUDIO_BITRATE_K = 256
-
-
-def effective_bitrate_k(spec: dict, duration_s: float | None) -> int:
-    """Video bitrate that still fits the platform's file-size cap.
-
-    `video_bitrate_k` is a quality target, not a promise about the resulting
-    size. At 12000k a video passes 300MB somewhere around 200s, so once Reels
-    could be up to 15 minutes a fixed bitrate meant the re-encode produced a
-    file the platform rejects — the transform meant to fix an oversized upload
-    was itself producing one. Below the crossover nothing changes; past it
-    quality gives way rather than the upload failing.
-    """
-    target = spec["video_bitrate_k"]
-    if not duration_s or duration_s <= 0:
-        return target
-    # 5% headroom for container/muxing overhead on top of the raw stream rate.
-    budget_kbit = spec["max_size_mb"] * 1024 * 8 * 0.95
-    allowed = int(budget_kbit / duration_s) - AUDIO_BITRATE_K
-    # Never drop below something watchable, even if that overshoots the cap —
-    # an unwatchable file that fits is not a better outcome than a clear error.
-    return max(1000, min(target, allowed))
-
 
 def validate_media_for_platform(media: dict, platform: str) -> dict:
     spec = PLATFORM_SPECS[platform]
@@ -141,7 +116,11 @@ def build_optimization_plan(media: dict, platform: str) -> dict:
         "target_resolution": f"{spec['width']}x{spec['height']}",
         "target_aspect": spec["aspect"],
         "codec": spec["codec"],
-        "bitrate_kbps": effective_bitrate_k(spec, media.get("duration")),
+        # Flat target bitrate, no size-budget scaling. Uploads are expected to
+        # stay under max_size_mb on their own, so quality is never traded away
+        # to force a long video under the cap — an oversized source still gets
+        # flagged by the size check above and re-encoded at full quality.
+        "bitrate_kbps": spec["video_bitrate_k"],
         "transform": "pad_and_scale" if validation["needs_transform"] else "passthrough",
         "quality_preserved": not validation["needs_transform"],
     }
