@@ -27,6 +27,7 @@ from platforms import PLATFORM_SPECS, validate_media_for_platform, build_optimiz
 from media_utils import UPLOAD_DIR, THUMB_DIR, OPT_DIR, probe_media, generate_thumbnail, transcode_video, remux_faststart
 from storage import APP_NAME, init_storage, put_object, get_object, is_configured as storage_configured
 import instagram
+import youtube
 import media_store
 
 mongo_url = os.environ.get('MONGO_URL')
@@ -61,6 +62,10 @@ async def lifespan(app: FastAPI):
     logger.info(
         "Instagram publishing: ENABLED (real)" if instagram.is_configured()
         else "Instagram publishing: simulated (IG_APP_ID/IG_APP_SECRET not set)"
+    )
+    logger.info(
+        "YouTube publishing: ENABLED (real)" if youtube.is_configured()
+        else "YouTube publishing: simulated (YT_CLIENT_ID/YT_CLIENT_SECRET not set)"
     )
 
     yield  # ---- application runs ----
@@ -208,10 +213,12 @@ async def list_platforms():
     return [{"id": k, **{kk: vv for kk, vv in v.items()}} for k, v in PLATFORM_SPECS.items()]
 
 
-# Never expose stored OAuth tokens to the client.
-CONN_PROJECTION = {"_id": 0, "access_token": 0}
+# Never expose stored OAuth tokens to the client. YouTube adds a refresh token,
+# which is longer-lived than the access token and must be hidden just as firmly.
+CONN_PROJECTION = {"_id": 0, "access_token": 0, "refresh_token": 0}
 
 INSTAGRAM = "instagram_reels"
+YOUTUBE = "youtube_shorts"
 
 
 @api.get("/connections")
@@ -327,6 +334,78 @@ async def instagram_callback(request: Request, code: Optional[str] = None,
 async def instagram_result(ig: str = "", msg: str = ""):
     """Fallback landing page when CORS_ORIGINS has no explicit frontend URL."""
     return {"status": ig, "message": msg}
+
+
+# ---------- YouTube ----------
+@api.get("/youtube/status")
+async def youtube_status():
+    """Tells the UI whether real YouTube publishing is available."""
+    return {"configured": youtube.is_configured()}
+
+
+@api.get("/youtube/authorize")
+async def youtube_authorize(user: User = Depends(get_current_user)):
+    if not youtube.is_configured():
+        raise HTTPException(status_code=503, detail="YouTube is not configured on this server")
+    state = uuid.uuid4().hex
+    await db.oauth_states.insert_one({
+        "state": state, "user_id": user.user_id, "platform": YOUTUBE,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    try:
+        return {"url": youtube.authorize_url(state)}
+    except youtube.YouTubeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api.get("/youtube/callback")
+async def youtube_callback(code: Optional[str] = None, state: Optional[str] = None,
+                           error: Optional[str] = None):
+    """Google redirects the browser here after the user approves access."""
+    frontend = _frontend_url()
+    def back(status: str, message: str = ""):
+        from urllib.parse import urlencode
+        q = urlencode({"yt": status, **({"msg": message[:200]} if message else {})})
+        target = f"{frontend}/connections?{q}" if frontend else f"/api/youtube/result?{q}"
+        return RedirectResponse(target, status_code=303)
+
+    if error or not code or not state:
+        return back("error", error or "Authorization was cancelled")
+
+    record = await db.oauth_states.find_one_and_delete({"state": state, "platform": YOUTUBE})
+    if not record:
+        return back("error", "Invalid or expired authorization state")
+
+    try:
+        tokens = await youtube.exchange_code(code)
+    except youtube.YouTubeError as e:
+        logger.error(f"YouTube connect failed: {e}")
+        return back("error", str(e))
+    except Exception as e:
+        logger.error(f"YouTube connect failed: {e}")
+        return back("error", "Could not complete YouTube connection")
+
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"])
+    await db.connections.update_one(
+        {"user_id": record["user_id"], "platform": YOUTUBE},
+        {"$set": {
+            "user_id": record["user_id"], "platform": YOUTUBE,
+            "handle": "YouTube channel",
+            "status": "connected", "simulated": False,
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+            "token_expires_at": expires_at.isoformat(),
+            "connected_at": datetime.now(timezone.utc).isoformat(),
+        }},
+        upsert=True,
+    )
+    return back("connected", "YouTube")
+
+
+@api.get("/youtube/result")
+async def youtube_result(yt: str = "", msg: str = ""):
+    """Fallback landing page when CORS_ORIGINS has no explicit frontend URL."""
+    return {"status": yt, "message": msg}
 
 
 # ---------- Media ----------
@@ -598,6 +677,108 @@ async def _publish_to_instagram(conn: dict, post: dict, media: Optional[dict],
     }
 
 
+async def _youtube_access_token(conn: dict) -> str:
+    """A usable access token, refreshed when it's due.
+
+    Google access tokens last about an hour, far less than the gap between
+    posts, so in practice this refreshes on nearly every publish. The new token
+    is written back so a burst of posts doesn't refresh once per platform.
+    """
+    expires_at = conn.get("token_expires_at")
+    if expires_at:
+        try:
+            # 60s of slack so a token doesn't lapse mid-upload.
+            if datetime.fromisoformat(expires_at) - timedelta(seconds=60) > datetime.now(timezone.utc):
+                return conn["access_token"]
+        except ValueError:
+            pass  # unparseable — refresh rather than trust it
+
+    refreshed = await youtube.refresh_access_token(conn["refresh_token"])
+    new_expiry = datetime.now(timezone.utc) + timedelta(seconds=refreshed["expires_in"])
+    await db.connections.update_one(
+        {"user_id": conn["user_id"], "platform": YOUTUBE},
+        {"$set": {
+            "access_token": refreshed["access_token"],
+            "token_expires_at": new_expiry.isoformat(),
+        }},
+    )
+    conn["access_token"] = refreshed["access_token"]
+    return refreshed["access_token"]
+
+
+async def _publish_to_youtube(conn: dict, post: dict, media: Optional[dict],
+                              optimized_file: Optional[str], optimization: Optional[dict],
+                              attempts: int) -> dict:
+    """Real YouTube Shorts publish. Returns a platform_results entry."""
+    fail = lambda msg: {"status": "failed", "error": msg, "attempts": attempts, "simulated": False}
+
+    if not media:
+        return fail("YouTube requires a video — this post has no media")
+    if media.get("type") != "video":
+        return fail("YouTube Shorts only accepts video, not images")
+
+    # Unlike Instagram, we push the bytes ourselves, so the file has to be
+    # readable right here. Restore it from durable storage if the ephemeral
+    # disk has been wiped since upload.
+    filename = optimized_file or media["filename"]
+    local = None
+    for d in (OPT_DIR, UPLOAD_DIR):
+        if (d / filename).is_file():
+            local = d / filename
+            break
+    if local is None:
+        dest = (OPT_DIR if filename.startswith("post_") else UPLOAD_DIR) / filename
+        if await media_store.restore(db, filename, dest):
+            local = dest
+        else:
+            return fail(
+                "The video is no longer stored on the server, so it cannot be uploaded to "
+                "YouTube. Re-upload the video in the Composer and publish again."
+            )
+
+    try:
+        token = await _youtube_access_token(conn)
+    except youtube.YouTubeError as e:
+        return fail(str(e))
+    except Exception as e:
+        logger.error(f"YouTube token refresh error for {post['post_id']}: {e}")
+        return fail("Could not refresh the YouTube connection — reconnect YouTube")
+
+    title = (post.get("title") or post.get("caption") or "Untitled").strip()
+    tags = [t.lstrip("#") for t in (post.get("hashtags") or [])]
+    try:
+        result = await youtube.upload_short(
+            token, str(local), title, _build_caption(post), tags,
+        )
+    except youtube.YouTubeError as e:
+        return fail(str(e))
+    except Exception as e:
+        logger.error(f"YouTube publish error for {post['post_id']}: {e}")
+        return fail(f"YouTube upload failed: {e}")
+
+    entry = {
+        "status": "published",
+        "url": result["url"],
+        "published_at": datetime.now(timezone.utc).isoformat(),
+        "optimization": optimization,
+        "optimized_file": optimized_file,
+        "metrics": {"views": 0, "likes": 0, "comments": 0, "shares": 0},
+        "media_id": result["video_id"],
+        "simulated": False,
+        "attempts": attempts,
+        "privacy_status": result.get("privacy_status"),
+    }
+    # YouTube force-locks uploads from an unaudited API project to private and
+    # this cannot be appealed, so say it plainly on the post rather than
+    # letting it look published when nobody can see it.
+    if result.get("privacy_status") == "private" and result.get("requested_privacy") != "private":
+        entry["note"] = (
+            "Uploaded, but YouTube locked it to Private because this API project "
+            "has not passed Google's audit yet. Open it in YouTube Studio to make it public."
+        )
+    return entry
+
+
 async def _publish_post(post: dict):
     """Publishing engine: real ffmpeg optimization, real Instagram delivery when
     connected, simulated delivery for the remaining platforms."""
@@ -666,6 +847,11 @@ async def _publish_post(post: dict):
         conn = conn_map.get(platform, {})
         if platform == INSTAGRAM and not conn.get("simulated", True):
             results[platform] = await _publish_to_instagram(
+                conn, post, media, optimized_file, optimization, attempts,
+            )
+            continue
+        if platform == YOUTUBE and not conn.get("simulated", True):
+            results[platform] = await _publish_to_youtube(
                 conn, post, media, optimized_file, optimization, attempts,
             )
             continue

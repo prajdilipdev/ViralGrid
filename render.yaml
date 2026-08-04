@@ -26,6 +26,10 @@ services:
         sync: false
       - key: IG_APP_SECRET
         sync: false
+      - key: YT_CLIENT_ID # Google OAuth client — leave blank to keep YouTube simulated
+        sync: false
+      - key: YT_CLIENT_SECRET
+        sync: false
     # Uploaded media lives on local disk, which is wiped on every deploy/restart.
     # On a paid plan, uncomment to persist uploads:
     # disk:

@@ -2,16 +2,25 @@ import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { PLATFORM_META } from "../lib/platforms";
 import { toast } from "sonner";
-import { Plug, Unplug } from "lucide-react";
+import { Plug, Unplug, AlertTriangle } from "lucide-react";
 import { ConnectionsSkeleton } from "../components/Skeletons";
 import ErrorState from "../components/ErrorState";
 
 const INSTAGRAM = "instagram_reels";
+const YOUTUBE = "youtube_shorts";
+
+// Platforms that have a real OAuth flow behind them. Everything else is still
+// simulated, so its Connect button just records a local connection.
+const LIVE_PLATFORMS = {
+  [INSTAGRAM]: { statusPath: "/instagram/status", authorizePath: "/instagram/authorize", param: "ig" },
+  [YOUTUBE]: { statusPath: "/youtube/status", authorizePath: "/youtube/authorize", param: "yt" },
+};
 
 export default function Connections() {
   const [conns, setConns] = useState([]);
   const [busy, setBusy] = useState(null);
-  const [igLive, setIgLive] = useState(false);
+  // Which real integrations the server actually has credentials for.
+  const [live, setLive] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,23 +34,38 @@ export default function Connections() {
   };
   useEffect(() => {
     load();
-    api.get("/instagram/status").then((r) => setIgLive(r.data.configured)).catch(() => {});
-    // Surface the result of the Instagram OAuth redirect
+    Object.entries(LIVE_PLATFORMS).forEach(([id, cfg]) => {
+      api
+        .get(cfg.statusPath)
+        .then((r) => setLive((prev) => ({ ...prev, [id]: r.data.configured })))
+        .catch(() => {});
+    });
+    // Surface the result of whichever OAuth redirect we just came back from.
     const params = new URLSearchParams(window.location.search);
-    const ig = params.get("ig");
-    if (ig === "connected") toast.success(`Instagram connected${params.get("msg") ? ` — @${params.get("msg")}` : ""}`);
-    else if (ig === "error") toast.error(params.get("msg") || "Instagram connection failed");
-    if (ig) window.history.replaceState(null, "", window.location.pathname);
+    let hit = null;
+    Object.entries(LIVE_PLATFORMS).forEach(([id, cfg]) => {
+      const outcome = params.get(cfg.param);
+      if (!outcome) return;
+      hit = cfg.param;
+      const name = PLATFORM_META[id]?.name || id;
+      if (outcome === "connected") toast.success(`${name} connected`);
+      else if (outcome === "error") toast.error(params.get("msg") || `${name} connection failed`);
+    });
+    if (hit) window.history.replaceState(null, "", window.location.pathname);
   }, []);
 
   const connMap = Object.fromEntries(conns.map((c) => [c.platform, c]));
+  const liveNames = Object.keys(LIVE_PLATFORMS)
+    .filter((id) => live[id])
+    .map((id) => PLATFORM_META[id]?.name || id);
 
   const connect = async (platform) => {
     setBusy(platform);
     try {
-      if (platform === INSTAGRAM && igLive) {
-        const r = await api.get("/instagram/authorize");
-        window.location.href = r.data.url; // hand off to Instagram
+      const cfg = LIVE_PLATFORMS[platform];
+      if (cfg && live[platform]) {
+        const r = await api.get(cfg.authorizePath);
+        window.location.href = r.data.url; // hand off to the platform's OAuth
         return;
       }
       await api.post("/connections", { platform });
@@ -66,10 +90,21 @@ export default function Connections() {
       <p className="vg-label text-[10px] font-semibold text-white/50 mb-2">Integrations</p>
       <h1 className="vg-tick text-3xl sm:text-4xl tracking-tighter font-light mb-3">Account Connections</h1>
       <p className="text-sm text-white/50 mb-8 max-w-2xl">
-        {igLive
-          ? "Instagram publishes for real via the Instagram Content Publishing API. The remaining platforms are simulated until their developer apps are set up."
-          : "All connections are simulated. Configure Instagram credentials on the server to publish to Instagram for real."}
+        {liveNames.length > 0
+          ? `${liveNames.join(" and ")} publish${liveNames.length === 1 ? "es" : ""} for real. The remaining platforms are simulated until their developer apps are set up.`
+          : "All connections are simulated. Configure platform credentials on the server to publish for real."}
       </p>
+      {live[YOUTUBE] && (
+        <div className="vg-panel bg-ink-900 p-4 mb-8 max-w-2xl flex items-start gap-3">
+          <AlertTriangle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-white/60 leading-relaxed">
+            YouTube locks videos uploaded through an un-audited API project to{" "}
+            <span className="text-white">Private</span>, and it can't be appealed. Shorts will
+            upload fine, but you'll need to make each one public in YouTube Studio until Google
+            approves the API audit for this project.
+          </p>
+        </div>
+      )}
 
       {loading ? <ConnectionsSkeleton count={7} /> : error ? (
         <div className="vg-panel bg-ink-900">
@@ -90,7 +125,7 @@ export default function Connections() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{name}</p>
-                    {id === INSTAGRAM && igLive ? (
+                    {live[id] ? (
                       <span className="text-[9px] tracking-wider uppercase font-semibold px-1.5 py-0.5 rounded bg-emerald-400/15 text-emerald-300 border border-emerald-400/20">Live</span>
                     ) : (
                       <span className="text-[9px] tracking-wider uppercase font-semibold px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/10">Simulated</span>
