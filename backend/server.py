@@ -399,7 +399,12 @@ async def list_media(user: User = Depends(get_current_user)):
     return await db.media.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
 
 
-@api.get("/media/file/{filename}")
+# HEAD as well as GET: Instagram fetches the video from this URL rather than
+# receiving an upload, and a fetcher may probe size/type with HEAD first —
+# which was answering 405. FileResponse handles HEAD itself, replying with the
+# headers and an empty body without ever opening the file, so this costs
+# nothing on a large reel.
+@api.api_route("/media/file/{filename}", methods=["GET", "HEAD"])
 async def serve_media(filename: str):
     if "/" in filename or "\\" in filename or ".." in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
