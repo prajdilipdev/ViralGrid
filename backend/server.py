@@ -383,6 +383,11 @@ async def youtube_callback(code: Optional[str] = None, state: Optional[str] = No
 
     try:
         tokens = await youtube.exchange_code(code)
+        # Read the channel back straight away. An account can own a personal
+        # channel and Brand Accounts, and the token silently binds to whichever
+        # was chosen — recording it is the only way the wrong one is visible
+        # before videos start appearing on it.
+        channel = await youtube.get_channel(tokens["access_token"])
     except youtube.YouTubeError as e:
         logger.error(f"YouTube connect failed: {e}")
         return back("error", str(e))
@@ -395,7 +400,9 @@ async def youtube_callback(code: Optional[str] = None, state: Optional[str] = No
         {"user_id": record["user_id"], "platform": YOUTUBE},
         {"$set": {
             "user_id": record["user_id"], "platform": YOUTUBE,
-            "handle": "YouTube channel",
+            "handle": channel["handle"] or channel["title"],
+            "channel_title": channel["title"],
+            "channel_id": channel["channel_id"],
             "status": "connected", "simulated": False,
             "access_token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
@@ -404,7 +411,8 @@ async def youtube_callback(code: Optional[str] = None, state: Optional[str] = No
         }},
         upsert=True,
     )
-    return back("connected", "YouTube")
+    logger.info(f"YouTube connected to channel '{channel['title']}' ({channel['channel_id']})")
+    return back("connected", channel["title"])
 
 
 @api.get("/youtube/result")

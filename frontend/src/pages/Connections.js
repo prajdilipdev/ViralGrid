@@ -48,7 +48,11 @@ export default function Connections() {
       if (!outcome) return;
       hit = cfg.param;
       const name = PLATFORM_META[id]?.name || id;
-      if (outcome === "connected") toast.success(`${name} connected`);
+      // Name the account we landed on. For YouTube this is the difference
+      // between the channel you meant and another one on the same Google
+      // account, which is otherwise invisible until videos appear on it.
+      const who = params.get("msg");
+      if (outcome === "connected") toast.success(who ? `${name} connected — ${who}` : `${name} connected`);
       else if (outcome === "error") toast.error(params.get("msg") || `${name} connection failed`);
     });
     if (hit) window.history.replaceState(null, "", window.location.pathname);

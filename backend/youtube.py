@@ -33,10 +33,18 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 UPLOAD_URL = "https://www.googleapis.com/upload/youtube/v3/videos"
 
-# Only the upload scope. Reading the channel name would need youtube.readonly
-# on top, and every extra scope is more surface for the compliance audit to
-# object to — not worth it for a cosmetic label.
-SCOPES = "https://www.googleapis.com/auth/youtube.upload"
+# upload, plus readonly so we can name the channel we actually connected to.
+# That was originally left out to keep the audit surface small, on the basis
+# that the channel name was cosmetic. It isn't: a Google account can own
+# several channels (a personal one plus Brand Accounts), the token binds to
+# whichever was chosen at consent, and without reading it back a connection to
+# the wrong channel is invisible until videos appear in the wrong place.
+SCOPES = " ".join([
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+])
+
+CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels"
 
 # YouTube's own limits on the metadata fields.
 TITLE_LIMIT = 100
@@ -122,8 +130,14 @@ def authorize_url(state: str) -> str:
         # offline + consent is what actually yields a refresh token. Without
         # prompt=consent Google omits it on every authorisation after the
         # first, and the connection then dies an hour later with no way back.
+        #
+        # select_account additionally forces the account/channel chooser every
+        # time. Google otherwise reuses the previously chosen channel silently,
+        # which on an account owning both a personal channel and a Brand
+        # Account means uploads land on whichever was picked first with no way
+        # to switch — reconnecting just repeats the same choice.
         "access_type": "offline",
-        "prompt": "consent",
+        "prompt": "select_account consent",
         "include_granted_scopes": "true",
     }
     return f"{AUTH_URL}?{urlencode(params)}"
@@ -219,6 +233,34 @@ async def refresh_access_token(refresh_token: str) -> dict:
     return {
         "access_token": data["access_token"],
         "expires_in": int(data.get("expires_in", 3600)),
+    }
+
+
+async def get_channel(access_token: str) -> dict:
+    """Which channel these credentials actually publish to.
+
+    A Google account can own a personal channel and any number of Brand
+    Accounts. `mine=true` resolves to the one the token is bound to, which is
+    the only reliable way to tell where uploads will land — so it is recorded
+    at connect time and shown in the UI.
+    """
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.get(CHANNELS_URL, params={"part": "snippet", "mine": "true"},
+                        headers={"Authorization": f"Bearer {access_token}"})
+    if r.status_code != 200:
+        raise YouTubeError(f"Could not read the YouTube channel: {_explain(r)}")
+
+    items = r.json().get("items") or []
+    if not items:
+        raise YouTubeError(
+            "That Google account has no YouTube channel. Pick the channel you "
+            "publish from on the Google account screen, not the bare Gmail."
+        )
+    snip = items[0].get("snippet") or {}
+    return {
+        "channel_id": items[0].get("id", ""),
+        "title": snip.get("title") or "YouTube channel",
+        "handle": snip.get("customUrl") or "",
     }
 
 
