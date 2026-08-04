@@ -53,8 +53,54 @@ class YouTubeError(Exception):
     """Raised with a human-readable message suitable for surfacing in the UI."""
 
 
+def _env(name: str) -> str:
+    """Read a credential, trimming surrounding whitespace.
+
+    Pasting into a hosting dashboard very easily carries a trailing newline or
+    space along with it, and Google then rejects the request as invalid_client
+    with no hint that the value merely has an invisible character on the end.
+    """
+    return (os.environ.get(name) or "").strip()
+
+
+def client_id() -> str:
+    return _env("YT_CLIENT_ID")
+
+
+def client_secret() -> str:
+    return _env("YT_CLIENT_SECRET")
+
+
 def is_configured() -> bool:
-    return bool(os.environ.get("YT_CLIENT_ID") and os.environ.get("YT_CLIENT_SECRET"))
+    return bool(client_id() and client_secret())
+
+
+def credentials_report() -> dict:
+    """Shape-only description of the configured credentials, for diagnosing a
+    failed connection without ever exposing the secret itself.
+
+    Reports whether each value looks like what Google issues and whether it
+    arrived with stray whitespace — the two things that actually go wrong —
+    but never any of the characters.
+    """
+    raw_id = os.environ.get("YT_CLIENT_ID") or ""
+    raw_secret = os.environ.get("YT_CLIENT_SECRET") or ""
+    cid, secret = raw_id.strip(), raw_secret.strip()
+    return {
+        "client_id_present": bool(cid),
+        "client_id_looks_right": cid.endswith(".apps.googleusercontent.com"),
+        "client_id_length": len(cid),
+        "client_id_had_whitespace": raw_id != cid,
+        "client_secret_present": bool(secret),
+        "client_secret_looks_right": secret.startswith("GOCSPX-"),
+        "client_secret_length": len(secret),
+        "client_secret_had_whitespace": raw_secret != secret,
+        # The classic mix-up: the two values pasted into each other's box.
+        "values_look_swapped": (
+            cid.startswith("GOCSPX-") or secret.endswith(".apps.googleusercontent.com")
+        ),
+        "redirect_uri": (os.environ.get("PUBLIC_BACKEND_URL") or "").rstrip("/") + "/api/youtube/callback",
+    }
 
 
 def redirect_uri() -> str:
@@ -68,7 +114,7 @@ def authorize_url(state: str) -> str:
     from urllib.parse import urlencode
 
     params = {
-        "client_id": os.environ["YT_CLIENT_ID"],
+        "client_id": client_id(),
         "redirect_uri": redirect_uri(),
         "response_type": "code",
         "scope": SCOPES,
@@ -134,8 +180,8 @@ async def exchange_code(code: str) -> dict:
     """Authorization code -> access token + refresh token."""
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(TOKEN_URL, data={
-            "client_id": os.environ["YT_CLIENT_ID"],
-            "client_secret": os.environ["YT_CLIENT_SECRET"],
+            "client_id": client_id(),
+            "client_secret": client_secret(),
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri(),
             "code": code,
@@ -162,8 +208,8 @@ async def refresh_access_token(refresh_token: str) -> dict:
     this runs before essentially every upload."""
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(TOKEN_URL, data={
-            "client_id": os.environ["YT_CLIENT_ID"],
-            "client_secret": os.environ["YT_CLIENT_SECRET"],
+            "client_id": client_id(),
+            "client_secret": client_secret(),
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
         })

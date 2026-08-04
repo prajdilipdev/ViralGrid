@@ -339,8 +339,13 @@ async def instagram_result(ig: str = "", msg: str = ""):
 # ---------- YouTube ----------
 @api.get("/youtube/status")
 async def youtube_status():
-    """Tells the UI whether real YouTube publishing is available."""
-    return {"configured": youtube.is_configured()}
+    """Tells the UI whether real YouTube publishing is available.
+
+    `credentials` describes only the *shape* of the configured values — never
+    any of their characters — so a failed connection can be diagnosed without
+    reading the secret out of the hosting dashboard.
+    """
+    return {"configured": youtube.is_configured(), "credentials": youtube.credentials_report()}
 
 
 @api.get("/youtube/authorize")
