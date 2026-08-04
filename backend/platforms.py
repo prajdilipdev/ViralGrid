@@ -1,7 +1,16 @@
 PLATFORM_SPECS = {
     "youtube_shorts": {
         "name": "YouTube Shorts", "aspect": "9:16", "width": 1080, "height": 1920,
-        "max_duration": 60, "max_size_mb": 256, "caption_limit": 100, "hashtag_limit": 15,
+        # 180s, not 60: YouTube raised the Shorts ceiling to three minutes in
+        # October 2024, and any vertical video at or under it is treated as a
+        # Short automatically. The old 60 was rejecting videos YouTube accepts.
+        "max_duration": 180,
+        # YouTube's real per-file limit is measured in gigabytes, so 256MB was
+        # never its rule. It also collided with the new duration: 180s at
+        # 12000k is ~270MB, which would have tripped the "can't be compressed
+        # under the cap" error on a file YouTube would have taken happily.
+        "max_size_mb": 1024,
+        "caption_limit": 100, "hashtag_limit": 15,
         "video_bitrate_k": 12000, "codec": "h264", "color": "#FF0000",
     },
     "instagram_reels": {
@@ -69,6 +78,19 @@ ACCEPTED_AUDIO_CODECS = {"aac"}
 AUDIO_BITRATE_K = 256
 
 
+def _secs(value: float) -> str:
+    """Format a duration for a message without lying about it.
+
+    int() truncates, so a 60.4s video against a 60s cap read as
+    "Duration 60s exceeds 60s limit" — self-contradictory, and it looks like a
+    bug in the check rather than a genuinely over-length video. Keep one
+    decimal whenever the value isn't whole.
+    """
+    if value is None:
+        return "0"
+    return f"{value:.1f}".rstrip("0").rstrip(".") if value % 1 else str(int(value))
+
+
 def validate_media_for_platform(media: dict, platform: str) -> dict:
     spec = PLATFORM_SPECS[platform]
     checks = []
@@ -77,15 +99,15 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
         dur = media.get("duration") or 0
         reels_tab_max = spec.get("reels_tab_max_duration")
         if dur > spec["max_duration"]:
-            checks.append({"level": "error", "message": f"Duration {int(dur)}s exceeds {spec['max_duration']}s limit"})
+            checks.append({"level": "error", "message": f"Duration {_secs(dur)}s exceeds {spec['max_duration']}s limit"})
         elif reels_tab_max and dur > reels_tab_max:
             # Publishes fine, but lands as a video post instead of in the Reels tab.
             checks.append({"level": "warn", "message": (
-                f"Duration {int(dur)}s is over {reels_tab_max}s — this will publish "
+                f"Duration {_secs(dur)}s is over {reels_tab_max}s — this will publish "
                 f"as a regular video post, not in the Reels tab"
             )})
         else:
-            checks.append({"level": "ok", "message": f"Duration {int(dur)}s within {spec['max_duration']}s limit"})
+            checks.append({"level": "ok", "message": f"Duration {_secs(dur)}s within {spec['max_duration']}s limit"})
 
         min_dur = spec.get("min_duration")
         if min_dur and 0 < dur < min_dur:
@@ -123,7 +145,7 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
         projected_mb = (spec["video_bitrate_k"] + AUDIO_BITRATE_K) * dur / 8 / 1024
         if dur > 0 and projected_mb > spec["max_size_mb"]:
             checks.append({"level": "error", "message": (
-                f"{size_mb}MB at {int(dur)}s can't be compressed under the "
+                f"{size_mb}MB at {_secs(dur)}s can't be compressed under the "
                 f"{spec['max_size_mb']}MB limit — trim the video or export it smaller"
             )})
         else:
