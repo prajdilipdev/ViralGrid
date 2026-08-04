@@ -63,6 +63,11 @@ PLATFORM_SPECS = {
 ACCEPTED_VIDEO_CODECS = {"h264", "hevc"}
 ACCEPTED_AUDIO_CODECS = {"aac"}
 
+# Must match the `-b:a 256k` transcode_video actually encodes at, or the
+# projection below under-counts. Used only to predict an output size — it must
+# not become a lever that scales the video bitrate down again.
+AUDIO_BITRATE_K = 256
+
 
 def validate_media_for_platform(media: dict, platform: str) -> dict:
     spec = PLATFORM_SPECS[platform]
@@ -109,8 +114,21 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
             needs_transform = True
     size_mb = round((media.get("size") or 0) / (1024 * 1024), 1)
     if size_mb > spec["max_size_mb"]:
-        checks.append({"level": "warn", "message": f"File {size_mb}MB exceeds {spec['max_size_mb']}MB — will be compressed"})
-        needs_transform = True
+        # Re-encoding uses a flat quality target, so past a crossover duration
+        # (~201s for Reels at 12000k) it cannot bring the file under the cap —
+        # the transform meant to rescue an oversized upload produces another
+        # oversized file, and only after minutes of work. Say so now rather
+        # than degrading the video and still being rejected by the platform.
+        dur = media.get("duration") or 0
+        projected_mb = (spec["video_bitrate_k"] + AUDIO_BITRATE_K) * dur / 8 / 1024
+        if dur > 0 and projected_mb > spec["max_size_mb"]:
+            checks.append({"level": "error", "message": (
+                f"{size_mb}MB at {int(dur)}s can't be compressed under the "
+                f"{spec['max_size_mb']}MB limit — trim the video or export it smaller"
+            )})
+        else:
+            checks.append({"level": "warn", "message": f"File {size_mb}MB exceeds {spec['max_size_mb']}MB — will be compressed"})
+            needs_transform = True
     else:
         checks.append({"level": "ok", "message": f"File size {size_mb}MB OK (max {spec['max_size_mb']}MB)"})
     w, h = media.get("width") or 0, media.get("height") or 0
