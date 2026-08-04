@@ -38,6 +38,12 @@ export default function DataDeletion() {
             token is deleted straight away and the app can no longer post or read anything from that
             account.
           </li>
+          <li>
+            <span className="text-white/80">The YouTube connection</span> — open{" "}
+            <span className="text-white/80">Connections</span> and press Disconnect. The stored access
+            and refresh tokens are deleted straight away and the app can no longer upload to that
+            channel.
+          </li>
         </ul>
       </Section>
 
@@ -60,6 +66,7 @@ export default function DataDeletion() {
             <li>Every post, including titles, captions, descriptions, hashtags and tags</li>
             <li>Every video and image uploaded, and any converted versions of them</li>
             <li>The Instagram access token, account ID and username</li>
+            <li>The YouTube access and refresh tokens, channel ID and channel name</li>
             <li>All platform connections, scheduled posts and recorded statistics</li>
             <li>All sign-in sessions</li>
           </ul>
@@ -83,6 +90,21 @@ export default function DataDeletion() {
           <span className="text-white/80">Settings → Apps and websites</span>, find ViralGrid and remove
           it. That invalidates the token at once, though it does not delete what is already stored here —
           email the address above for that.
+        </p>
+      </Section>
+
+      <Section title="Revoking access from Google's side">
+        <p>
+          The YouTube connection can be cut off the same way from your Google account: open{" "}
+          <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer"
+             className="text-white underline underline-offset-2 hover:text-white/80">
+            Google security settings
+          </a>, find ViralGrid and remove access. That invalidates the tokens at once. As above, it does
+          not delete what is already stored here — email the address above for that.
+        </p>
+        <p>
+          Videos already uploaded stay on your YouTube channel. ViralGrid cannot take them down; delete
+          them in YouTube Studio as normal.
         </p>
       </Section>
 

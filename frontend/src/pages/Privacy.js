@@ -53,6 +53,8 @@ export default function Privacy() {
               <Row what="Post content" why="Titles, captions, descriptions, hashtags, tags, chosen platforms, scheduled times and time zone." />
               <Row what="Instagram access token" why="Lets the app post on your behalf. Held server-side only and never sent to the browser." />
               <Row what="Instagram username and account ID" why="To show which account is connected and to publish to it." />
+              <Row what="YouTube access and refresh tokens" why="Let the app upload to your channel. Held server-side only and never sent to the browser." />
+              <Row what="YouTube channel name and ID" why="To show which channel is connected, so uploads cannot go to the wrong one unnoticed." />
               <Row what="Post performance figures" why="Views, likes, comments and shares fetched from Instagram for posts published through the app." />
             </tbody>
           </table>
@@ -74,6 +76,43 @@ export default function Privacy() {
         <p>
           Data obtained from Instagram is used only to display posts and their figures back inside the
           app. It is not combined with other sources, sold, or shared.
+        </p>
+      </Section>
+
+      <Section title="YouTube data">
+        <p>
+          ViralGrid uses <span className="text-white/80">YouTube API Services</span> to upload videos to
+          a channel you connect deliberately. By using that part of the app you agree to the{" "}
+          <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer"
+             className="text-white underline underline-offset-2 hover:text-white/80">
+            YouTube Terms of Service
+          </a>, and Google's own handling of your data is governed by the{" "}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer"
+             className="text-white underline underline-offset-2 hover:text-white/80">
+            Google Privacy Policy
+          </a>.
+        </p>
+        <p>
+          Two permissions are requested and nothing more: one to upload videos, and one read-only
+          permission used solely to read back the name of the channel being connected. That second one
+          exists so the app can show you which channel it is attached to — a Google account can own both
+          a personal channel and Brand Accounts, and without it a connection to the wrong channel would
+          go unnoticed until videos appeared on it.
+        </p>
+        <p>
+          The app never reads your videos, comments, subscribers, watch history or analytics. Nothing is
+          uploaded automatically: a video is only sent to YouTube when you choose YouTube on a post and
+          publish it, and the title, description and tags are the ones you entered. Data obtained through
+          YouTube API Services is used only inside the app, and is never sold, shared or combined with
+          other sources.
+        </p>
+        <p>
+          You can disconnect YouTube at any time from the Connections page, which deletes the stored
+          tokens immediately. You can also revoke access directly from your Google account at{" "}
+          <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer"
+             className="text-white underline underline-offset-2 hover:text-white/80">
+            Google security settings
+          </a>.
         </p>
       </Section>
 
@@ -101,6 +140,15 @@ export default function Privacy() {
         <ul className="list-disc pl-5 space-y-1.5">
           <li><span className="text-white/80">Google</span> — sign-in, handled through a hosted authentication service, so that step happens on a page operated by that provider rather than on this site.</li>
           <li><span className="text-white/80">Meta / Instagram</span> — publishing and post statistics, only for an account connected deliberately.</li>
+          <li>
+            <span className="text-white/80">YouTube API Services</span> — uploading Shorts to a channel
+            connected deliberately. Governed by the{" "}
+            <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer"
+               className="text-white underline underline-offset-2 hover:text-white/80">YouTube Terms of Service</a>{" "}
+            and the{" "}
+            <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer"
+               className="text-white underline underline-offset-2 hover:text-white/80">Google Privacy Policy</a>.
+          </li>
           <li><span className="text-white/80">MongoDB Atlas</span> — the database.</li>
           <li><span className="text-white/80">Render</span> — hosting for the site and the server.</li>
         </ul>
@@ -121,8 +169,14 @@ export default function Privacy() {
           is no charge and no reason is needed.
         </p>
         <p>
-          Access can also be revoked directly from Instagram, under Settings → Apps and websites.
-          Step-by-step instructions and the full list of what gets removed are on the{" "}
+          Access can also be revoked directly from Instagram, under Settings → Apps and websites, and
+          from Google at{" "}
+          <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer"
+             className="text-white underline underline-offset-2 hover:text-white/80">
+            myaccount.google.com/permissions
+          </a>{" "}
+          for the YouTube connection. Step-by-step instructions and the full list of what gets removed
+          are on the{" "}
           <Link to="/data-deletion" className="text-white underline underline-offset-2 hover:text-white/80">
             data deletion page
           </Link>.
