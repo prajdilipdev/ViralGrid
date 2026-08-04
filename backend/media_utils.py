@@ -18,6 +18,25 @@ async def _run(*args):
     return proc.returncode, out.decode(errors="ignore"), err.decode(errors="ignore")
 
 
+def _stream_rotation(stream: dict) -> int:
+    """Normalized rotation in {0, 90, 180, 270}, whichever shape this ffmpeg
+    build reports it in — the legacy `rotate` tag, or the Display Matrix
+    side_data newer builds use instead. Both exist in the wild."""
+    tag = (stream.get("tags") or {}).get("rotate")
+    if tag is not None:
+        try:
+            return int(float(tag)) % 360
+        except (TypeError, ValueError):
+            pass
+    for sd in stream.get("side_data_list") or []:
+        if sd.get("rotation") is not None:
+            try:
+                return int(round(float(sd["rotation"]))) % 360
+            except (TypeError, ValueError):
+                continue
+    return 0
+
+
 async def probe_media(path: str) -> dict:
     code, out, _ = await _run("ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path)
     if code != 0:
@@ -31,8 +50,15 @@ async def probe_media(path: str) -> dict:
         info["bitrate"] = int(fmt["bit_rate"])
     for s in data.get("streams", []):
         if s.get("codec_type") == "video" and not info["width"]:
-            info["width"] = s.get("width")
-            info["height"] = s.get("height")
+            w, h = s.get("width"), s.get("height")
+            # Phones commonly store the raw sensor buffer in landscape and mark
+            # a 90/270 rotation as container metadata rather than physically
+            # rotating pixels. Reading width/height as-is treats an already
+            # correctly-oriented 9:16 phone video as a mismatched 16:9 one,
+            # forcing a full re-encode that was never actually needed.
+            if _stream_rotation(s) in (90, 270) and w and h:
+                w, h = h, w
+            info["width"], info["height"] = w, h
             info["codec"] = s.get("codec_name")
             fr = s.get("r_frame_rate", "0/1")
             try:

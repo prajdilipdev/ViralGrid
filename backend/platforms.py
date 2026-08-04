@@ -18,6 +18,10 @@ PLATFORM_SPECS = {
         # still publishes, just as a regular video rather than a Reel. That's a
         # trade worth making knowingly, so it's a warning below, not a block.
         "max_duration": 900, "reels_tab_max_duration": 90,
+        # Meta's spec: "3 seconds minimum", and "Maximum columns (horizontal
+        # pixels): 1920". A source wider than that is rejected on their side
+        # however well-formed it otherwise is, so it has to be caught here.
+        "min_duration": 3, "max_width": 1920,
         "max_size_mb": 300, "caption_limit": 2200, "hashtag_limit": 30,
         # 12000 rather than 8000: measured SSIM 0.9988 vs 0.9969 against the
         # source, for no extra encode time. Instagram re-compresses anyway, so
@@ -78,6 +82,22 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
         else:
             checks.append({"level": "ok", "message": f"Duration {int(dur)}s within {spec['max_duration']}s limit"})
 
+        min_dur = spec.get("min_duration")
+        if min_dur and 0 < dur < min_dur:
+            checks.append({"level": "error", "message": (
+                f"Duration {dur:.1f}s is under the {min_dur}s minimum"
+            )})
+
+        fps = media.get("fps")
+        if fps and not (23 <= fps <= 60):
+            # Informational only. Re-encoding to "fix" the frame rate would
+            # resample every frame — a far bigger quality cost than the risk
+            # being flagged, and the upload usually succeeds regardless.
+            checks.append({"level": "warn", "message": (
+                f"{fps}fps is outside Instagram's documented 23-60fps range — "
+                f"uploading as-is rather than resampling frames"
+            )})
+
         vcodec = (media.get("codec") or "").lower()
         if vcodec and vcodec not in ACCEPTED_VIDEO_CODECS:
             checks.append({"level": "warn", "message": f"Video codec '{vcodec}' isn't accepted — will be converted to H.264"})
@@ -105,6 +125,15 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
             checks.append({"level": "ok", "message": f"Aspect ratio matches {spec['aspect']}"})
         if w < tw * 0.5:
             checks.append({"level": "warn", "message": f"Low resolution source — upscaling may reduce quality"})
+        max_w = spec.get("max_width")
+        if max_w and max(w, h) > max_w:
+            # Instagram caps horizontal pixels; a 4K source exceeds it even
+            # when the aspect ratio is a perfect 9:16, so scaling is the only
+            # way it publishes.
+            checks.append({"level": "warn", "message": (
+                f"{w}x{h} exceeds the {max_w}px maximum — will be scaled down"
+            )})
+            needs_transform = True
     status = "error" if any(c["level"] == "error" for c in checks) else ("warn" if any(c["level"] == "warn" for c in checks) else "ok")
     return {"platform": platform, "status": status, "checks": checks, "needs_transform": needs_transform}
 
