@@ -166,12 +166,14 @@ def validate_media_for_platform(media: dict, platform: str) -> dict:
         if w < tw * 0.5:
             checks.append({"level": "warn", "message": f"Low resolution source — upscaling may reduce quality"})
         max_w = spec.get("max_width")
-        if max_w and max(w, h) > max_w:
-            # Instagram caps horizontal pixels; a 4K source exceeds it even
-            # when the aspect ratio is a perfect 9:16, so scaling is the only
-            # way it publishes.
+        # Meta's limit is on columns — "Maximum columns (horizontal pixels)" —
+        # so it applies to the width alone. Measuring max(w, h) instead meant
+        # every portrait video taller than 1920 was flagged and needlessly
+        # re-encoded, including ordinary phone footage like 1440x2560 whose
+        # width is well inside the limit. There is no documented height cap.
+        if max_w and w > max_w:
             checks.append({"level": "warn", "message": (
-                f"{w}x{h} exceeds the {max_w}px maximum — will be scaled down"
+                f"{w}px wide exceeds Instagram's {max_w}px maximum — will be scaled down"
             )})
             needs_transform = True
     status = "error" if any(c["level"] == "error" for c in checks) else ("warn" if any(c["level"] == "warn" for c in checks) else "ok")
