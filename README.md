@@ -102,6 +102,49 @@ Redeploy, then open **Connections** — Instagram shows a **Live** badge. Click 
 - Instagram allows **100 API posts per 24 hours**.
 - Leaving `IG_APP_ID`/`IG_APP_SECRET` unset keeps Instagram simulated like the rest.
 
+## Enabling real YouTube Shorts publishing
+
+Uses the [YouTube Data API v3](https://developers.google.com/youtube/v3/guides/uploading_a_video) with Google OAuth.
+
+### 1. Google Cloud project
+1. At [console.cloud.google.com](https://console.cloud.google.com) create a project.
+2. Enable **YouTube Data API v3**.
+3. **Google Auth Platform → Data Access** → add both scopes:
+   - `https://www.googleapis.com/auth/youtube.upload` — performs the upload
+   - `https://www.googleapis.com/auth/youtube.readonly` — reads back the connected channel's name only
+4. **Audience** → add yourself as a test user, then **Publish app**. Left in *Testing*, Google expires the refresh token after 7 days and the connection has to be remade weekly.
+5. **Clients** → create an **OAuth client ID** of type *Web application*, with the redirect URI exactly:
+   `https://<your-backend>.onrender.com/api/youtube/callback`
+
+### 2. Render env vars (backend)
+| Variable | Value |
+|---|---|
+| `YT_CLIENT_ID` | OAuth client ID (ends `.apps.googleusercontent.com`) |
+| `YT_CLIENT_SECRET` | OAuth client secret (starts `GOCSPX-`) |
+| `PUBLIC_BACKEND_URL` | `https://<your-backend>.onrender.com` |
+
+Then open **Connections** → *Connect Account* on YouTube Shorts. Google shows an
+"unverified app" warning (expected for a private app — *Advanced → Go to …*), then an
+account chooser.
+
+### How it works / limits
+- **Opposite of Instagram:** YouTube does not fetch from a URL, so the file is pushed to
+  it — streamed from disk in 1MB chunks. Large uploads are correspondingly slower.
+- **Pick the right channel.** A Google account can own a personal channel *and* Brand
+  Accounts, and the token binds to whichever is chosen at consent. The Brand Account's
+  name in the chooser may differ from the channel's current name. The app reads the
+  channel back after connecting and shows it, so a wrong choice is visible immediately —
+  `prompt=select_account` forces the chooser each time so it can be corrected.
+- **Uploads are locked to Private** until the project passes Google's
+  [API compliance audit](https://support.google.com/youtube/contact/yt_api_form), and this
+  cannot be appealed. The app requests the real privacy status anyway, so uploads start
+  going out correctly the day an audit passes; meanwhile it flags each affected post.
+- Shorts are any vertical video ≤ **180s** (raised from 60s by YouTube in Oct 2024).
+- Quota: `videos.insert` cost dropped in Dec 2025, so the default 10,000 units/day is
+  roughly **100 uploads/day** rather than 6.
+- Access tokens last ~1 hour and are refreshed on demand from the stored refresh token.
+- Leaving `YT_CLIENT_ID`/`YT_CLIENT_SECRET` unset keeps YouTube simulated like the rest.
+
 ## Environment variables
 
 | Variable | Where | Required | Description |
@@ -111,7 +154,10 @@ Redeploy, then open **Connections** — Instagram shows a **Live** badge. Click 
 | `CORS_ORIGINS` | backend | production | Comma-separated allowed origins (defaults to `*`) |
 | `ALLOWED_EMAILS` | backend | recommended | Comma-separated Google emails allowed to sign in (unset = anyone) |
 | `IG_APP_ID` / `IG_APP_SECRET` | backend | no | Meta app credentials — enables real Instagram publishing |
-| `PUBLIC_BACKEND_URL` | backend | with Instagram | This backend's own https URL (OAuth redirect + media fetch) |
+| `YT_CLIENT_ID` / `YT_CLIENT_SECRET` | backend | no | Google OAuth client — enables real YouTube Shorts publishing |
+| `YT_PRIVACY_STATUS` | backend | no | Privacy requested for uploads: `public` (default), `unlisted`, `private` |
+| `YT_CATEGORY_ID` | backend | no | YouTube category id (default `22` People & Blogs; `20` is Gaming) |
+| `PUBLIC_BACKEND_URL` | backend | with Instagram/YouTube | This backend's own https URL (OAuth redirects + Instagram media fetch) |
 | `MEDIA_DB_MAX_MB` | backend | no | Max size kept as a durable MongoDB copy (default 60) |
 | `EMERGENT_LLM_KEY` | backend | no | Enables AI copy generation + Emergent object storage |
 | `REACT_APP_BACKEND_URL` | frontend (build time) | yes | Backend base URL; falls back to same-origin |
