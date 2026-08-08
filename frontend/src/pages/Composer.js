@@ -57,53 +57,49 @@ export default function Composer() {
   const [submitting, setSubmitting] = useState(null);
   const { ensureAwake } = useBackendStatus();
 
-  const [presets, setPresets] = useState(() => {
-    try {
-      const stored = localStorage.getItem("vg_hashtag_presets");
-      if (!stored) return DEFAULT_PRESETS;
-      const parsed = JSON.parse(stored);
-      const hasGta = parsed.some((p) => p.name === "GTA 5 NPC Viral" || p.id === "gta5-npc-viral");
-      return hasGta ? parsed : [DEFAULT_PRESETS[0], ...parsed];
-    } catch {
-      return DEFAULT_PRESETS;
-    }
-  });
+  const [presets, setPresets] = useState([]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("vg_hashtag_presets", JSON.stringify(presets));
-    } catch {}
-  }, [presets]);
+    api.get("/hashtag-presets")
+      .then((r) => setPresets(r.data))
+      .catch(() => {});
+  }, []);
 
   const applyPreset = (preset) => {
+    const formatted = (preset.hashtags || []).map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ");
     setForm((f) => {
-      if (!f.hashtags.trim()) return { ...f, hashtags: preset.hashtags };
+      if (!f.hashtags.trim()) return { ...f, hashtags: formatted };
       const existing = f.hashtags.trim();
-      return { ...f, hashtags: `${existing} ${preset.hashtags}` };
+      return { ...f, hashtags: `${existing} ${formatted}` };
     });
     toast.success(`Applied '${preset.name}' hashtags`);
   };
 
-  const savePreset = () => {
+  const savePreset = async () => {
     if (!form.hashtags.trim()) {
       toast.error("Enter hashtags first to save a preset");
       return;
     }
     const name = prompt("Enter a name for this hashtag preset:");
     if (!name || !name.trim()) return;
-    const newPreset = {
-      id: `custom-${Date.now()}`,
-      name: name.trim(),
-      hashtags: form.hashtags.trim(),
-      isDefault: false,
-    };
-    setPresets((prev) => [...prev, newPreset]);
-    toast.success(`Saved preset '${name.trim()}'`);
+    const tagList = form.hashtags.split(/[\s,]+/).map((s) => s.trim().replace(/^#/, "")).filter(Boolean);
+    try {
+      const r = await api.post("/hashtag-presets", { name: name.trim(), hashtags: tagList });
+      setPresets((prev) => [...prev, r.data]);
+      toast.success(`Saved preset '${name.trim()}' to database`);
+    } catch (e) {
+      toast.error("Failed to save preset");
+    }
   };
 
-  const deletePreset = (id) => {
-    setPresets((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Preset removed");
+  const deletePreset = async (presetId) => {
+    try {
+      await api.delete(`/hashtag-presets/${presetId}`);
+      setPresets((prev) => prev.filter((p) => p.preset_id !== presetId));
+      toast.success("Preset removed from database");
+    } catch (e) {
+      toast.error("Cannot delete default preset or server error");
+    }
   };
 
   useEffect(() => { api.get("/connections").then((r) => setConns(r.data)).catch(() => {}); }, []);
@@ -287,20 +283,20 @@ export default function Composer() {
               <div className="flex flex-wrap gap-2">
                 {presets.map((p) => (
                   <div
-                    key={p.id}
-                    data-testid={`hashtag-preset-${p.id}`}
+                    key={p.preset_id}
+                    data-testid={`hashtag-preset-${p.preset_id}`}
                     onClick={() => applyPreset(p)}
                     className="group flex items-center gap-1.5 px-3 py-1.5 bg-ink-800 hover:bg-white/15 border border-white/10 hover:border-white/30 rounded-md text-xs text-white/90 cursor-pointer transition-all duration-150"
                   >
                     <Hash size={11} className="text-white/40 group-hover:text-white/80" />
                     <span className="font-medium">{p.name}</span>
-                    {!p.isDefault && (
+                    {!p.is_default && (
                       <button
                         type="button"
-                        data-testid={`delete-preset-${p.id}`}
+                        data-testid={`delete-preset-${p.preset_id}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          deletePreset(p.id);
+                          deletePreset(p.preset_id);
                         }}
                         className="ml-1 text-white/30 hover:text-red-400 transition-colors"
                         title="Delete preset"

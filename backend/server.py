@@ -580,6 +580,67 @@ async def ai_generate(body: AIRequest, user: User = Depends(get_current_user)):
     return {"caption": parsed.get("caption", ""), "description": parsed.get("description", ""), "hashtags": parsed.get("hashtags", [])}
 
 
+# ---------- Hashtag Presets ----------
+class HashtagPresetCreate(BaseModel):
+    name: str
+    hashtags: List[str]
+
+
+DEFAULT_HASHTAG_PRESETS = [
+    {
+        "preset_id": "gta5-npc-viral",
+        "name": "GTA 5 NPC Viral",
+        "hashtags": ["GTA5", "GTAV", "GTAOnline", "GTANPCs", "GTAMemes", "GTAClips", "GamingReels", "ViralGaming"],
+        "is_default": True,
+    },
+    {
+        "preset_id": "viral-shorts",
+        "name": "Viral Shorts",
+        "hashtags": ["shorts", "reels", "viral", "trending", "fyp", "explore"],
+        "is_default": True,
+    },
+    {
+        "preset_id": "gaming-clips",
+        "name": "Gaming Clips",
+        "hashtags": ["gaming", "gamer", "gameplay", "clips", "twitch"],
+        "is_default": True,
+    },
+]
+
+
+@api.get("/hashtag-presets")
+async def list_hashtag_presets(user: User = Depends(get_current_user)):
+    custom = await db.hashtag_presets.find({"user_id": user.user_id}, {"_id": 0}).to_list(100)
+    return DEFAULT_HASHTAG_PRESETS + custom
+
+
+@api.post("/hashtag-presets")
+async def create_hashtag_preset(body: HashtagPresetCreate, user: User = Depends(get_current_user)):
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="Preset name is required")
+    preset_id = f"preset_{uuid.uuid4().hex[:12]}"
+    clean_tags = [t.strip().lstrip("#") for t in body.hashtags if t.strip()]
+    doc = {
+        "preset_id": preset_id,
+        "user_id": user.user_id,
+        "name": body.name.strip(),
+        "hashtags": clean_tags,
+        "is_default": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.hashtag_presets.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.delete("/hashtag-presets/{preset_id}")
+async def delete_hashtag_preset(preset_id: str, user: User = Depends(get_current_user)):
+    res = await db.hashtag_presets.delete_one({"preset_id": preset_id, "user_id": user.user_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Preset not found or is default")
+    return {"status": "deleted"}
+
+
 # ---------- Posts ----------
 class PostCreate(BaseModel):
     title: str
