@@ -24,10 +24,10 @@ export default function Layout({ children }) {
     <div className="min-h-screen bg-ink-950 text-white flex flex-col md:flex-row">
       <aside className="md:w-52 md:min-h-screen max-w-full border-b md:border-b-0 md:border-r border-white/10 flex md:flex-col bg-ink-900 shrink-0">
         <div className="hidden md:flex items-center gap-2 px-5 h-16 border-b border-white/10 cursor-pointer" onClick={() => navigate("/")}>
-          <Logo size={20} className="text-signal" />
+          <Logo size={20} className="text-white" />
           <span
-            className="vg-display tracking-tight font-semibold"
-            style={{ textShadow: "0 0 18px rgb(var(--vg-signal) / 0.35)" }}
+            className="vg-display tracking-tight font-semibold text-white"
+            style={{ textShadow: "0 0 18px rgba(255, 255, 255, 0.2)" }}
           >
             ViralGrid
           </span>

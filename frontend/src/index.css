@@ -14,8 +14,8 @@
     --vg-panel: 17 17 16; /* ink-900 */
     --vg-elevated: 24 25 22; /* ink-800 — inputs, recessed surfaces */
     --vg-hairline: 35 36 32; /* ink-700 */
-    --vg-signal: 238 255 0; /* accent as foreground: focus, ticks, indicators */
-    --vg-signal-fill: 238 255 0; /* accent as a fill with dark text on top */
+    --vg-signal: 255 255 255; /* accent as foreground: focus, ticks, indicators */
+    --vg-signal-fill: 255 255 255; /* accent as a fill with dark text on top */
     --vg-grain-opacity: 0.03;
     --vg-glow-strength: 0.04;
     --vg-panel-top-light: 0.02;
@@ -31,14 +31,8 @@
        rgb(0 0 0) there was a hard black bar on paper. Panel borders don't use
        it in light mode — `.light .vg-panel` sets its own black/10 hairline. */
     --vg-hairline: 214 211 203;
-    /* Two accent tokens in light mode, because one value cannot serve both
-       directions: #8E9900 as foreground on paper measures only 2.77:1 (fails
-       WCAG AA), while a value dark enough to pass leaves too little contrast
-       for dark button labels sitting on top of it.
-         foreground #6B7300 on paper  -> 4.56:1  (AA text)
-         ink on fill #8E9900          -> 6.33:1  (AA text) */
-    --vg-signal: 107 115 0; /* accent as foreground */
-    --vg-signal-fill: 142 153 0; /* signal-deep as a fill */
+    --vg-signal: 16 16 14; /* accent as foreground */
+    --vg-signal-fill: 16 16 14; /* signal-deep as a fill */
     /* The grain layer is fixed over the whole viewport at z-index 9999, so it
        sits on top of text as well as background. At 0.5 it measurably ate into
        the contrast the colours above were tuned for; 0.12 keeps the paper
