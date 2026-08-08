@@ -67,11 +67,7 @@ export default function Composer() {
 
   const applyPreset = (preset) => {
     const formatted = (preset.hashtags || []).map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ");
-    setForm((f) => {
-      if (!f.hashtags.trim()) return { ...f, hashtags: formatted };
-      const existing = f.hashtags.trim();
-      return { ...f, hashtags: `${existing} ${formatted}` };
-    });
+    setForm((f) => ({ ...f, hashtags: formatted }));
     toast.success(`Applied '${preset.name}' hashtags`);
   };
 
