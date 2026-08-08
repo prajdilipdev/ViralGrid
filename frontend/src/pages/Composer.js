@@ -7,12 +7,33 @@ import { toast } from "sonner";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import tz from "dayjs/plugin/timezone";
-import { UploadCloud, Sparkles, Send, Save, CalendarClock, CheckCircle2, AlertTriangle, XCircle, Loader2, X } from "lucide-react";
+import { UploadCloud, Sparkles, Send, Save, CalendarClock, CheckCircle2, AlertTriangle, XCircle, Loader2, X, Hash, Plus } from "lucide-react";
 
 dayjs.extend(utc);
 dayjs.extend(tz);
 
 const TIMEZONES = ["UTC", "America/New_York", "America/Chicago", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Dubai", "Asia/Kolkata", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney"];
+
+const DEFAULT_PRESETS = [
+  {
+    id: "gta5-npc-viral",
+    name: "GTA 5 NPC Viral",
+    hashtags: "#GTA5 #GTAV #GTAOnline #GTANPCs #GTAMemes #GTAClips #GamingReels #ViralGaming",
+    isDefault: true,
+  },
+  {
+    id: "viral-shorts",
+    name: "Viral Shorts",
+    hashtags: "#shorts #reels #viral #trending #fyp #explore",
+    isDefault: true,
+  },
+  {
+    id: "gaming-clips",
+    name: "Gaming Clips",
+    hashtags: "#gaming #gamer #gameplay #clips #twitch",
+    isDefault: true,
+  },
+];
 
 const CheckIcon = ({ level }) =>
   level === "ok" ? <CheckCircle2 size={12} className="text-emerald-400 shrink-0" /> :
@@ -35,6 +56,55 @@ export default function Composer() {
   const [schedule, setSchedule] = useState({ enabled: false, datetime: "", timezone: dayjs.tz.guess() || "UTC", recurrence: "none" });
   const [submitting, setSubmitting] = useState(null);
   const { ensureAwake } = useBackendStatus();
+
+  const [presets, setPresets] = useState(() => {
+    try {
+      const stored = localStorage.getItem("vg_hashtag_presets");
+      if (!stored) return DEFAULT_PRESETS;
+      const parsed = JSON.parse(stored);
+      const hasGta = parsed.some((p) => p.name === "GTA 5 NPC Viral" || p.id === "gta5-npc-viral");
+      return hasGta ? parsed : [DEFAULT_PRESETS[0], ...parsed];
+    } catch {
+      return DEFAULT_PRESETS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("vg_hashtag_presets", JSON.stringify(presets));
+    } catch {}
+  }, [presets]);
+
+  const applyPreset = (preset) => {
+    setForm((f) => {
+      if (!f.hashtags.trim()) return { ...f, hashtags: preset.hashtags };
+      const existing = f.hashtags.trim();
+      return { ...f, hashtags: `${existing} ${preset.hashtags}` };
+    });
+    toast.success(`Applied '${preset.name}' hashtags`);
+  };
+
+  const savePreset = () => {
+    if (!form.hashtags.trim()) {
+      toast.error("Enter hashtags first to save a preset");
+      return;
+    }
+    const name = prompt("Enter a name for this hashtag preset:");
+    if (!name || !name.trim()) return;
+    const newPreset = {
+      id: `custom-${Date.now()}`,
+      name: name.trim(),
+      hashtags: form.hashtags.trim(),
+      isDefault: false,
+    };
+    setPresets((prev) => [...prev, newPreset]);
+    toast.success(`Saved preset '${name.trim()}'`);
+  };
+
+  const deletePreset = (id) => {
+    setPresets((prev) => prev.filter((p) => p.id !== id));
+    toast.success("Preset removed");
+  };
 
   useEffect(() => { api.get("/connections").then((r) => setConns(r.data)).catch(() => {}); }, []);
   const connected = new Set(conns.map((c) => c.platform));
@@ -104,7 +174,7 @@ export default function Composer() {
     try {
       const payload = {
         title: form.title, caption: form.caption, description: form.description,
-        hashtags: form.hashtags.split(",").map((s) => s.trim().replace(/^#/, "")).filter(Boolean),
+        hashtags: form.hashtags.split(/[\s,]+/).map((s) => s.trim().replace(/^#/, "")).filter(Boolean),
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
         media_ids: media ? [media.media_id] : [],
         platforms: selected, platform_overrides: overrides,
@@ -192,10 +262,55 @@ export default function Composer() {
             <textarea data-testid="post-description-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={3}
               className="w-full bg-ink-800 border border-white/10 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input data-testid="post-hashtags-input" value={form.hashtags} onChange={(e) => setForm({ ...form, hashtags: e.target.value })} placeholder="Hashtags (comma separated)"
+              <input data-testid="post-hashtags-input" value={form.hashtags} onChange={(e) => setForm({ ...form, hashtags: e.target.value })} placeholder="Hashtags e.g. #GTA5 #GTAV"
                 className="h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
               <input data-testid="post-tags-input" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="Tags (comma separated)"
                 className="h-11 bg-ink-800 border border-white/10 rounded-md px-4 text-sm focus:outline-none focus:border-white/40 transition-colors duration-200" />
+            </div>
+
+            {/* Hashtag Presets */}
+            <div className="pt-3 border-t border-white/10 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-white/60 flex items-center gap-1.5">
+                  <Hash size={13} className="text-white/40" /> Hashtag Presets (1-Click)
+                </span>
+                <button
+                  type="button"
+                  data-testid="save-hashtag-preset-btn"
+                  onClick={savePreset}
+                  className="text-[11px] text-white/50 hover:text-white flex items-center gap-1 font-medium transition-colors"
+                  title="Save current hashtags as a new preset"
+                >
+                  <Plus size={12} /> Save Current as Preset
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {presets.map((p) => (
+                  <div
+                    key={p.id}
+                    data-testid={`hashtag-preset-${p.id}`}
+                    onClick={() => applyPreset(p)}
+                    className="group flex items-center gap-1.5 px-3 py-1.5 bg-ink-800 hover:bg-white/15 border border-white/10 hover:border-white/30 rounded-md text-xs text-white/90 cursor-pointer transition-all duration-150"
+                  >
+                    <Hash size={11} className="text-white/40 group-hover:text-white/80" />
+                    <span className="font-medium">{p.name}</span>
+                    {!p.isDefault && (
+                      <button
+                        type="button"
+                        data-testid={`delete-preset-${p.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePreset(p.id);
+                        }}
+                        className="ml-1 text-white/30 hover:text-red-400 transition-colors"
+                        title="Delete preset"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
