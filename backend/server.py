@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(check_due_posts, "interval", seconds=30, id="publish_due")
     scheduler.add_job(refresh_instagram_tokens, "interval", hours=12, id="refresh_ig_tokens")
     scheduler.add_job(sync_instagram_posts, "interval", hours=6, id="sync_ig_posts")
+    scheduler.add_job(sync_youtube_posts, "interval", hours=6, id="sync_yt_posts")
     scheduler.start()
     logger.info(
         "Instagram publishing: ENABLED (real)" if instagram.is_configured()
@@ -769,13 +770,18 @@ async def _publish_to_youtube(conn: dict, post: dict, media: Optional[dict],
         logger.error(f"YouTube publish error for {post['post_id']}: {e}")
         return fail(f"YouTube upload failed: {e}")
 
+    # Real counts from the moment it publishes. They'll be near-zero seconds
+    # after upload, but starting from the API means the figures shown are
+    # always something YouTube actually reported. "shares" stays at 0 because
+    # the Data API exposes no share count for anyone.
+    stats = await youtube.get_stats(token, result["video_id"])
     entry = {
         "status": "published",
         "url": result["url"],
         "published_at": datetime.now(timezone.utc).isoformat(),
         "optimization": optimization,
         "optimized_file": optimized_file,
-        "metrics": {"views": 0, "likes": 0, "comments": 0, "shares": 0},
+        "metrics": {"views": 0, "likes": 0, "comments": 0, "shares": 0, **stats},
         "media_id": result["video_id"],
         "simulated": False,
         "attempts": attempts,
@@ -1150,8 +1156,16 @@ async def bulk_create_posts(body: BulkCreateRequest, user: User = Depends(get_cu
 
 @api.post("/posts/sync")
 async def sync_posts(user: User = Depends(get_current_user)):
-    """Check Instagram for posts the user deleted there, and refresh metrics."""
-    return await sync_instagram_posts(user.user_id)
+    """Refresh metrics from every live platform, and flag posts deleted there."""
+    ig = await sync_instagram_posts(user.user_id)
+    yt = await sync_youtube_posts(user.user_id)
+    return {
+        "checked": ig["checked"] + yt["checked"],
+        "deleted": ig["deleted"] + yt["deleted"],
+        "refreshed": ig["refreshed"] + yt["refreshed"],
+        "instagram": ig,
+        "youtube": yt,
+    }
 
 
 @api.post("/posts/{post_id}/publish")
@@ -1267,6 +1281,71 @@ async def check_due_posts():
         except Exception as e:
             logger.error(f"Scheduled publish failed for {post['post_id']}: {e}")
             await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {"status": "failed", "error": str(e)}})
+
+
+async def sync_youtube_posts(user_id: Optional[str] = None) -> dict:
+    """Refresh view/like/comment counts for published YouTube videos, and flag
+    any the user has since deleted on YouTube.
+
+    Without this the figures would stay frozen at whatever they were in the
+    seconds after upload — which is to say zero.
+    """
+    if not youtube.is_configured():
+        return {"checked": 0, "deleted": 0, "refreshed": 0}
+    q = {f"platform_results.{YOUTUBE}.status": "published"}
+    if user_id:
+        q["user_id"] = user_id
+    posts = await db.posts.find(q, {"_id": 0}).to_list(500)
+
+    conn_cache: Dict[str, Any] = {}
+    checked = deleted = refreshed = 0
+    for post in posts:
+        result = (post.get("platform_results") or {}).get(YOUTUBE) or {}
+        video_id = result.get("media_id")
+        if not video_id:
+            continue
+        uid = post["user_id"]
+        if uid not in conn_cache:
+            conn = await db.connections.find_one(
+                {"user_id": uid, "platform": YOUTUBE, "simulated": False}, {"_id": 0}
+            )
+            # One refresh per user per run, not one per video.
+            if conn:
+                try:
+                    await _youtube_access_token(conn)
+                except Exception as e:
+                    logger.warning(f"YouTube sync: token refresh failed for {uid}: {e}")
+                    conn = None
+            conn_cache[uid] = conn
+        conn = conn_cache[uid]
+        if not conn:
+            continue
+
+        checked += 1
+        exists = await youtube.video_exists(conn["access_token"], video_id)
+        if exists is None:
+            continue  # inconclusive — leave the record alone
+        if exists is False:
+            result["status"] = DELETED
+            result["deleted_at"] = datetime.now(timezone.utc).isoformat()
+            result["deleted_note"] = "Deleted by user on YouTube"
+            deleted += 1
+        else:
+            stats = await youtube.get_stats(conn["access_token"], video_id)
+            if not stats:
+                continue
+            result["metrics"] = {**(result.get("metrics") or {}), **stats}
+            refreshed += 1
+
+        all_results = {**(post.get("platform_results") or {}), YOUTUBE: result}
+        await db.posts.update_one({"post_id": post["post_id"]}, {"$set": {
+            f"platform_results.{YOUTUBE}": result,
+            "status": _post_status_from_results(all_results),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }})
+    if deleted or refreshed:
+        logger.info(f"YouTube sync: checked={checked} deleted={deleted} refreshed={refreshed}")
+    return {"checked": checked, "deleted": deleted, "refreshed": refreshed}
 
 
 async def sync_instagram_posts(user_id: Optional[str] = None) -> dict:

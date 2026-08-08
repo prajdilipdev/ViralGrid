@@ -45,6 +45,7 @@ SCOPES = " ".join([
 ])
 
 CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels"
+VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
 
 # YouTube's own limits on the metadata fields.
 TITLE_LIMIT = 100
@@ -262,6 +263,67 @@ async def get_channel(access_token: str) -> dict:
         "title": snip.get("title") or "YouTube channel",
         "handle": snip.get("customUrl") or "",
     }
+
+
+async def get_stats(access_token: str, video_id: str) -> dict:
+    """View/like/comment counts for one video, or {} if they can't be read.
+
+    Costs 1 quota unit, so this is cheap to poll. Note there is deliberately no
+    "shares" key: the Data API exposes no share count at all, and inventing a
+    zero would be indistinguishable from a real zero. Callers merge this over
+    whatever they already hold, so an absent metric keeps its previous value
+    rather than being reset.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(VIDEOS_URL, params={"part": "statistics", "id": video_id},
+                            headers={"Authorization": f"Bearer {access_token}"})
+    except Exception as e:
+        logger.warning(f"YouTube stats network error for {video_id}: {e}")
+        return {}
+
+    if r.status_code != 200:
+        logger.warning(f"YouTube stats unavailable for {video_id}: {_explain(r)}")
+        return {}
+
+    items = r.json().get("items") or []
+    if not items:
+        # Deleted on YouTube, or not visible to these credentials.
+        logger.info(f"YouTube stats: no video returned for {video_id}")
+        return {}
+
+    stats = items[0].get("statistics") or {}
+
+    def num(key: str):
+        raw = stats.get(key)
+        if raw is None:
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    out = {}
+    for our_key, their_key in (("views", "viewCount"), ("likes", "likeCount"),
+                               ("comments", "commentCount")):
+        value = num(their_key)
+        if value is not None:
+            out[our_key] = value
+    return out
+
+
+async def video_exists(access_token: str, video_id: str) -> Optional[bool]:
+    """Is this video still on YouTube? None when it can't be determined."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(VIDEOS_URL, params={"part": "id", "id": video_id},
+                            headers={"Authorization": f"Bearer {access_token}"})
+    except Exception as e:
+        logger.warning(f"YouTube existence check network error for {video_id}: {e}")
+        return None
+    if r.status_code != 200:
+        return None
+    return bool(r.json().get("items"))
 
 
 # ---------- Publishing ----------
