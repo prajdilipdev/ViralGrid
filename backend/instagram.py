@@ -23,7 +23,14 @@ API_VERSION = "v25.0"
 AUTH_URL = "https://www.instagram.com/oauth/authorize"
 TOKEN_URL = "https://api.instagram.com/oauth/access_token"
 
-SCOPES = "instagram_business_basic,instagram_business_content_publish"
+# manage_insights is what the media insights edge actually requires. Without it
+# the insights call is rejected and only the media object's like/comment counts
+# survive the fallback — which is why views read 0 while likes were correct.
+SCOPES = (
+    "instagram_business_basic,"
+    "instagram_business_content_publish,"
+    "instagram_business_manage_insights"
+)
 
 # Container processing. A fixed 5s interval measured better than an adaptive
 # one (average extra wait 2.05s vs 2.60s), and Meta's guidance is to poll far
@@ -326,7 +333,13 @@ async def get_insights(token: str, media_id: str) -> dict:
                     logger.warning(f"Insights returned no usable metrics for {media_id}: {r.text[:300]}")
             else:
                 # Don't fail silently — this is why zeros showed up unexplained.
-                logger.warning(f"Insights unavailable for {media_id}: {_explain(r)}")
+                detail = _explain(r)
+                if r.status_code in (400, 403) and "permission" in detail.lower():
+                    detail += (
+                        " — the connection predates the instagram_business_manage_insights "
+                        "scope; reconnect Instagram on the Connections page to grant it"
+                    )
+                logger.warning(f"Insights unavailable for {media_id}: {detail}")
 
             # Like/comment counts live on the media object and are always readable.
             r2 = await c.get(f"{GRAPH}/{API_VERSION}/{media_id}", params={

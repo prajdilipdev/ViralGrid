@@ -67,7 +67,7 @@ export default function Analytics() {
         </div>
         <SyncButton onDone={load} />
       </div>
-      <p className="text-[11px] text-white/40 mb-6 uppercase tracking-widest">Instagram metrics are live · other platforms simulated</p>
+      <p className="text-[11px] text-white/40 mb-6 uppercase tracking-widest">Instagram and YouTube metrics are live · other platforms simulated</p>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 border-t border-l border-white/5">
         <KPI label="Views" value={totals.views} icon={Eye} testid="kpi-views" />

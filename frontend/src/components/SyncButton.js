@@ -8,7 +8,7 @@ import api from "../lib/api";
  * fresh metrics. `onDone` is called after a successful sync so the page can
  * reload whatever it is showing.
  */
-export default function SyncButton({ onDone, label = "Sync with Instagram", className = "" }) {
+export default function SyncButton({ onDone, label = "Sync metrics", className = "" }) {
   const [syncing, setSyncing] = useState(false);
 
   const sync = async () => {
